@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "998584428063",
+    "project_id": "yuhan-club-app",
+    "storage_bucket": "yuhan-club-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:998584428063:android:7d16bc4a48ccf59bf0972a",
+        "android_client_info": {
+          "package_name": "kr.ac.yuhan.yuhan_club"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCsfj3iWN5jAEV07YfJd97rgXSjJwOWA4A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

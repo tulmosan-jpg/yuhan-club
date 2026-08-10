@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 대외활동/박람회: 누구나 읽기(자동수집분 포함), 쓰기는 운영진만.
+    // TODO: 운영진 판별을 Auth custom claim(admin) 등으로 강화.
+    match /activities/{id} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // 멘토링 보고서: 작성자 본인만.
+    match /reports/{id} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == resource.data.authorId;
+      allow create: if request.auth != null;
+    }
+
+    // 출석: 본인 문서만.
+    match /attendance/{userId}/days/{day} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

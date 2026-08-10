@@ -1,0 +1,19 @@
+{
+  "id": "2026-08-10T04-41-14-289Z-yuhan-food-nutrition-club-app-home-d",
+  "createdAt": "2026-08-10T04:41:14.292Z",
+  "prompt": "Yuhan Food&Nutrition club app home dashboard, teal-green brand",
+  "mode": null,
+  "url": null,
+  "viewport": "desktop",
+  "repoRoot": "/Users/choedonghyeog/yuhan_club",
+  "cwd": "/Users/choedonghyeog/yuhan_club",
+  "requestPath": "/Users/choedonghyeog/yuhan_club/.aidesigner/runs/2026-08-10T04-41-14-289Z-yuhan-food-nutrition-club-app-home-d/request.json",
+  "repoContextPath": "/Users/choedonghyeog/yuhan_club/.aidesigner/runs/2026-08-10T04-41-14-289Z-yuhan-food-nutrition-club-app-home-d/repo-context.json",
+  "designHtmlPath": "/Users/choedonghyeog/yuhan_club/.aidesigner/runs/2026-08-10T04-41-14-289Z-yuhan-food-nutrition-club-app-home-d/design.html",
+  "previewPath": null,
+  "previewError": "Preview rendering requires puppeteer. Install it in the repo or alongside @aidesigner/agent-skills.",
+  "parentRunId": null,
+  "usage": null,
+  "transport": "mcp",
+  "remoteRunId": "7309afb4-8a9a-4ede-85c8-8162305f74ac"
+}

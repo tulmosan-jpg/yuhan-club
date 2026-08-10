@@ -1,0 +1,17 @@
+{
+  "repoRoot": "/Users/choedonghyeog/yuhan_club",
+  "cwd": "/Users/choedonghyeog/yuhan_club",
+  "stack": {
+    "frameworks": [],
+    "componentLibraries": [],
+    "styling": [],
+    "componentDirectories": [],
+    "packageFiles": []
+  },
+  "routes": [],
+  "tokens": {
+    "sources": [],
+    "tokens": []
+  },
+  "summary": "Repo root: /Users/choedonghyeog/yuhan_club\nWorking directory: /Users/choedonghyeog/yuhan_club\nFrameworks: none detected\nStyling: none detected\nComponent libraries: none detected\nRoute roots: none detected\nRoute candidates: none detected\nComponent directories: none detected\nToken sources: none detected\nVisible design language hints: no strong hints detected"
+}

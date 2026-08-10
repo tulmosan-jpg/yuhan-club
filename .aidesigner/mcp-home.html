@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>유한대 식품영양학과 클럽 앱</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Pretendard', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf6', 100: '#dbfce9', 200: '#bcf6d6', 300: '#89ebbe',
+                            400: '#4fd69f', 500: '#1F9D6B', 600: '#17795A', 700: '#15614a',
+                            800: '#134e3d', 900: '#114033',
+                            tonal: '#E0F5EB', onTonal: '#0E5C3D',
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 8px 30px rgba(0, 0, 0, 0.04)',
+                        'card': '0 2px 10px rgba(0, 0, 0, 0.02)',
+                        'nav': '0 -4px 20px rgba(0, 0, 0, 0.05)',
+                        'inner-light': 'inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                    },
+                    transitionTimingFunction: { 'spring': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)' }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; background-color: #f4f4f5; display: flex; justify-content: center; align-items: center; min-height: 100dvh; margin: 0; }
+        .app-frame { width: 100%; max-width: 414px; height: 100dvh; max-height: 896px; background-color: #FAFAFA; position: relative; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; }
+        @media (min-width: 640px) { .app-frame { height: 896px; border-radius: 40px; border: 8px solid #ffffff; box-shadow: 0 40px 80px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(0,0,0,0.05); } }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .active-scale:active { transform: scale(0.96); transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes subtle-pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+        .animate-subtle-pulse { animation: subtle-pulse 3s infinite ease-in-out; }
+        .stagger-item { opacity: 0; transform: translateY(20px); animation: fadeUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+        .progress-line { transition: width 1s cubic-bezier(0.25, 1, 0.5, 1); width: 0%; }
+        .glass-nav { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+    </style>
+</head>
+<body class="text-zinc-800 antialiased selection:bg-brand-500 selection:text-white">
+    <main class="app-frame">
+        <header class="flex justify-between items-center px-6 pt-12 pb-4 bg-[#FAFAFA]/90 backdrop-blur-md sticky top-0 z-30">
+            <div class="flex flex-col gap-1">
+                <div class="flex items-center gap-1.5 text-brand-600 font-semibold text-xs tracking-tight">
+                    <i class="ph-fill ph-plant"></i>
+                    <span>유한대 식품영양학과</span>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
+                    안녕하세요, 서연님
+                    <i class="ph-duotone ph-hand-waving text-brand-500"></i>
+                </h1>
+            </div>
+            <button class="relative active-scale w-10 h-10 rounded-full overflow-hidden border border-zinc-200 shadow-sm bg-zinc-100">
+                <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80" alt="User Profile" class="w-full h-full object-cover">
+                <span class="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
+            </button>
+        </header>
+        <div class="flex-1 overflow-y-auto hide-scrollbar px-6 pb-32 pt-2 relative">
+            <section class="stagger-item mb-8" style="animation-delay: 0.1s;">
+                <div class="relative bg-gradient-to-br from-brand-500 to-brand-600 rounded-[2rem] p-6 shadow-soft text-white overflow-hidden shadow-inner-light">
+                    <i class="ph-duotone ph-coffee absolute -bottom-6 -right-4 text-9xl text-white opacity-10 rotate-12"></i>
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <span class="inline-block px-2.5 py-1 bg-white/20 rounded-full text-[10px] font-bold tracking-wider mb-2 backdrop-blur-sm border border-white/20">ATTENDANCE STREAK</span>
+                                <h2 class="text-xl font-bold leading-snug">연속 출석 3일차!<br><span class="text-brand-100">커피 획득까지 2일 남았어요.</span></h2>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                                <i class="ph-fill ph-fire text-yellow-300 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-6 relative">
+                            <div class="absolute top-1/2 left-0 w-full h-1 bg-black/10 -translate-y-1/2 rounded-full"></div>
+                            <div id="streak-line" class="absolute top-1/2 left-0 h-1 bg-white -translate-y-1/2 rounded-full progress-line" style="width: 0%;"></div>
+                            <div class="relative flex justify-between z-10">
+                                <div class="flex flex-col items-center gap-2"><div class="w-6 h-6 rounded-full bg-white text-brand-600 flex items-center justify-center shadow-md"><i class="ph-bold ph-check text-[10px]"></i></div><span class="text-[10px] font-medium text-white/80">월</span></div>
+                                <div class="flex flex-col items-center gap-2"><div class="w-6 h-6 rounded-full bg-white text-brand-600 flex items-center justify-center shadow-md"><i class="ph-bold ph-check text-[10px]"></i></div><span class="text-[10px] font-medium text-white/80">화</span></div>
+                                <div class="flex flex-col items-center gap-2"><div class="w-6 h-6 rounded-full bg-white border-2 border-brand-300 text-brand-600 flex items-center justify-center shadow-md transform scale-110"><i class="ph-bold ph-check text-[10px]"></i></div><span class="text-[10px] font-bold text-white">수</span></div>
+                                <div class="flex flex-col items-center gap-2"><div class="w-6 h-6 rounded-full bg-black/10 backdrop-blur-sm flex items-center justify-center border border-white/30"><div class="w-2 h-2 rounded-full bg-white/50"></div></div><span class="text-[10px] font-medium text-white/50">목</span></div>
+                                <div class="flex flex-col items-center gap-2"><div class="w-8 h-8 -mt-1 rounded-full bg-yellow-300 text-yellow-800 flex items-center justify-center shadow-[0_0_15px_rgba(253,224,71,0.4)]"><i class="ph-fill ph-coffee text-sm"></i></div><span class="text-[10px] font-bold text-yellow-300">리워드</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="stagger-item mb-10" style="animation-delay: 0.2s;">
+                <h3 class="text-sm font-bold text-zinc-900 mb-4 tracking-tight px-1 flex items-center justify-between">빠른 실행<i class="ph-bold ph-caret-right text-zinc-400"></i></h3>
+                <div class="grid grid-cols-3 gap-3">
+                    <button class="active-scale bg-zinc-100 hover:bg-zinc-200 transition-colors rounded-3xl p-4 flex flex-col items-center justify-center gap-3 aspect-square shadow-card"><div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-zinc-700 shadow-sm"><i class="ph-duotone ph-file-text text-2xl"></i></div><span class="text-[11px] font-semibold text-zinc-600 tracking-tight">보고서 작성</span></button>
+                    <button class="active-scale bg-zinc-100 hover:bg-zinc-200 transition-colors rounded-3xl p-4 flex flex-col items-center justify-center gap-3 aspect-square shadow-card"><div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-zinc-700 shadow-sm"><i class="ph-duotone ph-ticket text-2xl"></i></div><span class="text-[11px] font-semibold text-zinc-600 tracking-tight">박람회 신청</span></button>
+                    <button class="active-scale bg-brand-tonal rounded-3xl p-4 flex flex-col items-center justify-center gap-3 aspect-square shadow-card relative overflow-hidden"><div class="absolute top-3 right-3 w-2 h-2 rounded-full bg-brand-500 animate-subtle-pulse"></div><div class="w-12 h-12 rounded-2xl bg-brand-500 text-white flex items-center justify-center shadow-md"><i class="ph-bold ph-qr-code text-2xl"></i></div><span class="text-[11px] font-bold text-brand-onTonal tracking-tight">QR 출석</span></button>
+                </div>
+            </section>
+            <section class="stagger-item" style="animation-delay: 0.3s;">
+                <div class="flex justify-between items-end mb-4 px-1">
+                    <h3 class="text-lg font-bold text-zinc-900 tracking-tight">이달의 영양·식품 소식</h3>
+                    <a href="#" class="text-xs font-medium text-brand-600">전체보기</a>
+                </div>
+                <div class="flex flex-col gap-3">
+                    <button class="active-scale w-full bg-white p-4 rounded-3xl shadow-card flex items-center gap-4 text-left border border-zinc-100/50"><div class="flex flex-col items-center justify-center w-12 h-14 bg-zinc-50 rounded-xl border border-zinc-100 flex-shrink-0"><span class="text-[10px] font-bold text-brand-600">11월</span><span class="text-lg font-black text-zinc-800 leading-none">24</span></div><div class="flex-1 min-w-0"><div class="flex items-center gap-2 mb-1"><span class="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold tracking-wider">대외활동</span></div><h4 class="text-sm font-bold text-zinc-900 truncate">2024 서울국제식품산업전 참관</h4><p class="text-xs text-zinc-500 mt-1 flex items-center gap-1"><i class="ph-fill ph-map-pin text-zinc-400"></i> 코엑스 (COEX)</p></div></button>
+                    <button class="active-scale w-full bg-white p-4 rounded-3xl shadow-card flex items-center gap-4 text-left border border-zinc-100/50"><div class="flex flex-col items-center justify-center w-12 h-14 bg-zinc-50 rounded-xl border border-zinc-100 flex-shrink-0"><span class="text-[10px] font-bold text-zinc-500">11월</span><span class="text-lg font-black text-zinc-800 leading-none">28</span></div><div class="flex-1 min-w-0"><div class="flex items-center gap-2 mb-1"><span class="px-2 py-0.5 bg-brand-50 text-brand-600 rounded text-[9px] font-bold tracking-wider">학과공지</span></div><h4 class="text-sm font-bold text-zinc-900 truncate">2학기 영양사 현장실습 오리엔테이션</h4><p class="text-xs text-zinc-500 mt-1 flex items-center gap-1"><i class="ph-fill ph-clock text-zinc-400"></i> 오후 2:00 • 창조관 301호</p></div></button>
+                    <button class="active-scale w-full bg-white p-4 rounded-3xl shadow-card flex items-center gap-4 text-left border border-zinc-100/50"><div class="flex flex-col items-center justify-center w-12 h-14 bg-zinc-50 rounded-xl border border-zinc-100 flex-shrink-0"><span class="text-[10px] font-bold text-zinc-500">12월</span><span class="text-lg font-black text-zinc-800 leading-none">05</span></div><div class="flex-1 min-w-0"><div class="flex items-center gap-2 mb-1"><span class="px-2 py-0.5 bg-purple-50 text-purple-600 rounded text-[9px] font-bold tracking-wider">스터디</span></div><h4 class="text-sm font-bold text-zinc-900 truncate">식품기사 자격증 대비반 모집</h4><p class="text-xs text-zinc-500 mt-1 flex items-center gap-1"><i class="ph-fill ph-users text-zinc-400"></i> 선착순 15명 마감</p></div></button>
+                </div>
+            </section>
+        </div>
+        <nav class="absolute bottom-0 w-full glass-nav border-t border-zinc-200/50 shadow-nav z-40 pb-safe">
+            <div class="flex justify-around items-center h-20 px-2 pb-2">
+                <button class="flex flex-col items-center justify-center w-16 gap-1 group active-scale"><div class="w-12 h-8 bg-brand-tonal rounded-full flex items-center justify-center mb-0.5 transition-all group-hover:scale-105"><i class="ph-fill ph-house text-xl text-brand-onTonal"></i></div><span class="text-[10px] font-bold text-brand-onTonal">홈</span></button>
+                <button class="flex flex-col items-center justify-center w-16 gap-1.5 group active-scale"><div class="w-12 h-8 rounded-full flex items-center justify-center transition-all group-hover:bg-zinc-100"><i class="ph text-xl ph-file-text text-zinc-500 group-hover:text-zinc-800"></i></div><span class="text-[10px] font-medium text-zinc-500 group-hover:text-zinc-800">보고서</span></button>
+                <button class="flex flex-col items-center justify-center w-16 gap-1.5 group active-scale"><div class="w-12 h-8 rounded-full flex items-center justify-center transition-all group-hover:bg-zinc-100"><i class="ph text-xl ph-calendar-star text-zinc-500 group-hover:text-zinc-800"></i></div><span class="text-[10px] font-medium text-zinc-500 group-hover:text-zinc-800">대외활동</span></button>
+                <button class="flex flex-col items-center justify-center w-16 gap-1.5 group active-scale"><div class="w-12 h-8 rounded-full flex items-center justify-center transition-all group-hover:bg-zinc-100 relative"><span class="absolute top-1.5 right-3 w-1.5 h-1.5 bg-red-500 rounded-full"></span><i class="ph text-xl ph-scan text-zinc-500 group-hover:text-zinc-800"></i></div><span class="text-[10px] font-medium text-zinc-500 group-hover:text-zinc-800">출석/내정보</span></button>
+            </div>
+        </nav>
+    </main>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            setTimeout(() => { const line = document.getElementById('streak-line'); if(line) { line.style.width = '50%'; } }, 300);
+            const staggerItems = document.querySelectorAll('.stagger-item');
+            staggerItems.forEach((item, index) => { item.style.animationDelay = `${(index * 0.1) + 0.1}s`; });
+        });
+    </script>
+</body>
+</html>
