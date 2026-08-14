@@ -3,8 +3,10 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/theme.dart';
+import '../../app/text_utils.dart';
 import '../../models/activity.dart';
 import '../../app/activity_style.dart';
+import '../../l10n/app_strings.dart';
 
 /// 대외활동/박람회 상세 화면.
 class ActivityDetailScreen extends StatelessWidget {
@@ -16,23 +18,55 @@ class ActivityDetailScreen extends StatelessWidget {
     final uri = Uri.parse(raw.startsWith('http') ? raw : 'https://$raw');
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('링크를 열 수 없습니다.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'cannot_open_link'))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final df = DateFormat('yyyy.MM.dd (E)', 'ko');
+    final lang = Localizations.localeOf(context).languageCode;
+    final df = DateFormat('yyyy.MM.dd (E)', lang);
     final showSoon = activity.closingSoon && !activity.closed;
     return Scaffold(
       appBar: AppBar(
-        title: Text(activity.type.label,
+        title: Text(activityTypeLabel(context, activity.type),
             style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          if (activity.imageUrl != null && activity.imageUrl!.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.network(
+                  activity.imageUrl!,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, progress) => progress == null
+                      ? child
+                      : Container(
+                          color: AppTheme.brandTonal,
+                          alignment: Alignment.center,
+                          child: const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: AppTheme.brand500),
+                          ),
+                        ),
+                  errorBuilder: (_, _, _) => Container(
+                    color: AppTheme.brandTonal,
+                    alignment: Alignment.center,
+                    child: Icon(ActivityStyle.icon(activity.type),
+                        size: 48, color: AppTheme.brandOnTonal),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -53,15 +87,15 @@ class ActivityDetailScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        _typeTag(),
+                        _typeTag(context),
                         if (activity.closed) ...[
                           const SizedBox(width: 6),
-                          _statusTag('마감', const Color(0xFF9CA3AF),
-                              const Color(0xFFF4F4F5)),
+                          _statusTag(tr(context, 'closed'),
+                              const Color(0xFF9CA3AF), const Color(0xFFF4F4F5)),
                         ] else if (showSoon) ...[
                           const SizedBox(width: 6),
-                          _statusTag('마감임박', const Color(0xFFE53E3E),
-                              const Color(0xFFFFF0F0)),
+                          _statusTag(tr(context, 'closing_soon'),
+                              const Color(0xFFE53E3E), const Color(0xFFFFF0F0)),
                         ],
                       ],
                     ),
@@ -77,29 +111,40 @@ class ActivityDetailScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          _row(Icons.apartment_outlined, '주최/주관', activity.organizer),
+          _row(Icons.apartment_outlined, tr(context, 'detail_organizer'),
+              activity.organizer),
           if (activity.startDate != null)
-            _row(Icons.event_outlined, '행사일',
+            _row(Icons.event_outlined, tr(context, 'detail_eventdate'),
                 df.format(activity.startDate!)),
           if (activity.deadline != null)
-            _row(Icons.schedule, '신청마감', df.format(activity.deadline!),
+            _row(Icons.schedule, tr(context, 'detail_deadline'),
+                df.format(activity.deadline!),
                 highlight: showSoon),
           if (activity.location != null)
-            _row(Icons.place_outlined, '장소', activity.location!),
-          const Divider(height: 32),
-          const Text('상세 내용',
-              style:
-                  TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(activity.description,
-              style: const TextStyle(height: 1.6)),
+            _row(Icons.place_outlined, tr(context, 'detail_location'),
+                activity.location!),
+          if (cleanText(activity.description).isNotEmpty) ...[
+            const Divider(height: 32),
+            Text(tr(context, 'detail_content'),
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(cleanText(activity.description),
+                style: const TextStyle(height: 1.6, color: Color(0xFF3F3F46))),
+          ],
           const SizedBox(height: 28),
-          if (activity.url != null)
+          if (activity.url != null) ...[
+            Text(
+              tr(context, 'detail_more_hint'),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+            ),
+            const SizedBox(height: 10),
             FilledButton.icon(
               onPressed: () => _openUrl(context),
               icon: const Icon(Icons.open_in_new),
-              label: const Text('신청/상세 페이지 열기'),
+              label: Text(tr(context, 'detail_open_link')),
             ),
+          ],
         ],
       ),
     );
@@ -133,14 +178,14 @@ class ActivityDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _typeTag() {
+  Widget _typeTag(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: AppTheme.brandTonal,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(activity.type.label,
+      child: Text(activityTypeLabel(context, activity.type),
           style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,

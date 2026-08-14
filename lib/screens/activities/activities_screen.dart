@@ -6,7 +6,9 @@ import '../../app/theme.dart';
 import '../../data/repository.dart';
 import '../../models/activity.dart';
 import '../../app/activity_style.dart';
+import '../../l10n/app_strings.dart';
 import 'activity_detail_screen.dart';
+import 'activity_thumb.dart';
 
 /// 대외활동/박람회 목록 화면 (유한 녹색 브랜드 리디자인).
 class ActivitiesScreen extends StatefulWidget {
@@ -19,19 +21,45 @@ class ActivitiesScreen extends StatefulWidget {
 class _ActivitiesScreenState extends State<ActivitiesScreen> {
   late Future<List<Activity>> _future;
   ActivityType? _filter;
+  bool _foodOnly = false;
 
   @override
   void initState() {
     super.initState();
+    _reload();
+  }
+
+  void _reload() {
     _future = context.read<AppRepository>().fetchActivities();
+  }
+
+  Future<void> _refresh() async {
+    final future = context.read<AppRepository>().fetchActivities();
+    setState(() => _future = future);
+    await future; // 인디케이터가 완료까지 유지되도록 대기
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(tr(context, 'refreshed')),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('대외활동',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(tr(context, 'activities_title'),
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: tr(context, 'refresh'),
+            onPressed: _refresh,
+          ),
+        ],
       ),
       body: FutureBuilder<List<Activity>>(
         future: _future,
@@ -40,35 +68,64 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snap.hasError) {
-            return Center(
-              child: Text('불러오지 못했습니다.',
-                  style: TextStyle(color: Colors.grey.shade600)),
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                children: [
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.35),
+                  Center(
+                    child: Text(tr(context, 'load_failed'),
+                        style: TextStyle(color: Colors.grey.shade600)),
+                  ),
+                ],
+              ),
             );
           }
           var items = snap.data ?? [];
-          if (_filter != null) {
+          if (_foodOnly) {
+            items = items.where((a) => a.foodRelated).toList();
+          } else if (_filter != null) {
             items = items.where((a) => a.type == _filter).toList();
           }
           return Column(
             children: [
               _TypeBar(
                 selected: _filter,
-                onSelected: (t) => setState(() => _filter = t),
+                foodOnly: _foodOnly,
+                onSelected: (t) =>
+                    setState(() { _filter = t; _foodOnly = false; }),
+                onFoodSelected: () =>
+                    setState(() { _foodOnly = true; _filter = null; }),
               ),
               Expanded(
-                child: items.isEmpty
-                    ? Center(
-                        child: Text('등록된 활동이 없습니다.',
-                            style: TextStyle(color: Colors.grey.shade500)),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                        itemCount: items.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: 14),
-                        itemBuilder: (context, i) =>
-                            _ActivityCard(activity: items[i]),
-                      ),
+                child: RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: items.isEmpty
+                      ? ListView(
+                          children: [
+                            SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.3),
+                            Center(
+                              child: Text(
+                                  _foodOnly
+                                      ? tr(context, 'no_food_activities')
+                                      : tr(context, 'no_activities'),
+                                  style: TextStyle(
+                                      color: Colors.grey.shade500)),
+                            ),
+                          ],
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: items.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 14),
+                          itemBuilder: (context, i) =>
+                              _ActivityCard(activity: items[i]),
+                        ),
+                ),
               ),
             ],
           );
@@ -79,9 +136,16 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
 }
 
 class _TypeBar extends StatelessWidget {
-  const _TypeBar({required this.selected, required this.onSelected});
+  const _TypeBar({
+    required this.selected,
+    required this.foodOnly,
+    required this.onSelected,
+    required this.onFoodSelected,
+  });
   final ActivityType? selected;
+  final bool foodOnly;
   final ValueChanged<ActivityType?> onSelected;
+  final VoidCallback onFoodSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -91,16 +155,23 @@ class _TypeBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         children: [
-          _chip('전체', selected == null, () => onSelected(null)),
+          _chip(tr(context, 'filter_all'), selected == null && !foodOnly,
+              () => onSelected(null)),
+          // 식품영양학과 전용 섹션 — 식품·영양 관련만 모아보기
+          _chip(tr(context, 'filter_food'), foodOnly, onFoodSelected,
+              accent: true),
           ...ActivityType.values.map(
-            (t) => _chip(t.label, selected == t, () => onSelected(t)),
+            (t) => _chip(activityTypeLabel(context, t),
+                selected == t && !foodOnly, () => onSelected(t)),
           ),
         ],
       ),
     );
   }
 
-  Widget _chip(String label, bool selected, VoidCallback onTap) {
+  Widget _chip(String label, bool selected, VoidCallback onTap,
+      {bool accent = false}) {
+    final Color selBg = accent ? AppTheme.brand600 : AppTheme.brand500;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
@@ -109,15 +180,19 @@ class _TypeBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? AppTheme.brand500 : Colors.white,
+            color: selected
+                ? selBg
+                : (accent ? AppTheme.brandTonal : Colors.white),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppTheme.brand500 : const Color(0xFFE4E4E7),
+              color: selected
+                  ? selBg
+                  : (accent ? AppTheme.brand200 : const Color(0xFFE4E4E7)),
             ),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: AppTheme.brand500.withValues(alpha: 0.25),
+                      color: selBg.withValues(alpha: 0.25),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -131,8 +206,14 @@ class _TypeBar extends StatelessWidget {
             overflow: TextOverflow.visible,
             style: TextStyle(
                 fontSize: 14,
-                fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-                color: selected ? Colors.white : const Color(0xFF52525B)),
+                fontWeight: (selected || accent)
+                    ? FontWeight.bold
+                    : FontWeight.w500,
+                color: selected
+                    ? Colors.white
+                    : (accent
+                        ? AppTheme.brandOnTonal
+                        : const Color(0xFF52525B))),
           ),
         ),
       ),
@@ -158,48 +239,50 @@ class _ActivityCard extends StatelessWidget {
           ),
         ),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppTheme.radiusCard),
             border: Border.all(color: const Color(0x0F000000)),
           ),
-          child: Column(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  _typeTag(a.type),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(a.organizer,
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey.shade500),
-                        maxLines: 1,
+              ActivityThumb(imageUrl: a.imageUrl, type: a.type, size: 92),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _typeTag(context, a.type),
+                        const Spacer(),
+                        _dDayBadge(context, a),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(a.title,
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            height: 1.3,
+                            color: Color(0xFF18181B)),
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis),
-                  ),
-                  const Spacer(),
-                  _dDayBadge(a),
-                ],
+                    const SizedBox(height: 6),
+                    if (a.organizer.isNotEmpty)
+                      _metaRow(Icons.apartment_outlined, a.organizer),
+                    if (a.deadline != null) ...[
+                      const SizedBox(height: 4),
+                      _metaRow(
+                          Icons.calendar_today_outlined,
+                          tr(context, 'due', {
+                            'date': DateFormat('yyyy.MM.dd').format(a.deadline!)
+                          })),
+                    ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 14),
-              Text(a.title,
-                  style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      height: 1.3,
-                      color: Color(0xFF18181B)),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 14),
-              if (a.deadline != null)
-                _metaRow(Icons.calendar_today_outlined,
-                    '마감 ${DateFormat('yyyy.MM.dd').format(a.deadline!)}'),
-              if (a.location != null) ...[
-                const SizedBox(height: 8),
-                _metaRow(Icons.place_outlined, a.location!),
-              ],
             ],
           ),
         ),
@@ -207,7 +290,7 @@ class _ActivityCard extends StatelessWidget {
     );
   }
 
-  Widget _typeTag(ActivityType type) {
+  Widget _typeTag(BuildContext context, ActivityType type) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
@@ -220,7 +303,7 @@ class _ActivityCard extends StatelessWidget {
           Icon(ActivityStyle.icon(type),
               size: 13, color: AppTheme.brandOnTonal),
           const SizedBox(width: 4),
-          Text(type.label,
+          Text(activityTypeLabel(context, type),
               style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -230,16 +313,19 @@ class _ActivityCard extends StatelessWidget {
     );
   }
 
-  Widget _dDayBadge(Activity a) {
+  Widget _dDayBadge(BuildContext context, Activity a) {
     if (a.closed) {
-      return _badge('마감', const Color(0xFF9CA3AF), const Color(0xFFF4F4F5));
+      return _badge(tr(context, 'closed'), const Color(0xFF9CA3AF),
+          const Color(0xFFF4F4F5));
     }
     if (a.deadline == null) return const SizedBox.shrink();
     final days = a.deadline!.difference(DateTime.now()).inDays;
-    final dText = days <= 0 ? 'D-DAY' : 'D-$days';
+    final dText = days <= 0
+        ? tr(context, 'dday_today')
+        : tr(context, 'dday', {'n': '$days'});
     if (a.closingSoon) {
-      return _badge('$dText 마감임박', const Color(0xFFE53E3E),
-          const Color(0xFFFFF0F0));
+      return _badge('$dText · ${tr(context, 'closing_soon')}',
+          const Color(0xFFE53E3E), const Color(0xFFFFF0F0));
     }
     return _badge(dText, AppTheme.brand600,
         AppTheme.brand500.withValues(alpha: 0.10));

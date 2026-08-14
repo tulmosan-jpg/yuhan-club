@@ -40,6 +40,8 @@ class MentoringReport {
   final String title;
   final String content; // 활동 내용
   final String? feedback; // 소감/피드백
+  final List<String> photos; // 첨부 사진(base64 JPEG, 최대 4장)
+  final String? groupId; // 소속 그룹(팀). 그룹 멤버+관리자만 열람.
   final ReportStatus status;
   final DateTime updatedAt;
 
@@ -53,6 +55,8 @@ class MentoringReport {
     required this.title,
     required this.content,
     this.feedback,
+    this.photos = const [],
+    this.groupId,
     this.status = ReportStatus.draft,
     required this.updatedAt,
   });
@@ -71,6 +75,8 @@ class MentoringReport {
       title: title,
       content: content,
       feedback: feedback,
+      photos: photos,
+      groupId: groupId,
       status: status ?? this.status,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -88,6 +94,8 @@ class MentoringReport {
       title: map['title'] as String? ?? '',
       content: map['content'] as String? ?? '',
       feedback: map['feedback'] as String?,
+      photos: (map['photos'] as List?)?.cast<String>() ?? const [],
+      groupId: map['groupId'] as String?,
       status: ReportStatus.fromName(map['status'] as String?),
       updatedAt:
           (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -107,6 +115,8 @@ class MentoringReport {
         'title': title,
         'content': content,
         'feedback': feedback,
+        'photos': photos,
+        'groupId': groupId,
         'status': status.name,
         'updatedAt': Timestamp.fromDate(updatedAt),
       };

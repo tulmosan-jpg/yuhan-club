@@ -44,6 +44,22 @@ class Activity {
     this.imageUrl,
   });
 
+  /// 식품·영양 관련 활동 여부. 제목/주최에 식품영양 도메인 키워드가 포함되면
+  /// true. (식품영양학과 전용 "식품·영양" 섹션 필터에 사용)
+  /// 설명 본문까지 넣으면 오탐이 많아 제목+주최만으로 판별한다.
+  static const List<String> _foodKeywords = [
+    '식품', '영양', '요리', '조리', '급식', '외식', '식단', '레시피', '푸드',
+    'food', 'nutrition', '위생', '제과', '제빵', '베이커리', '바리스타',
+    '농식품', '축산', '수산', '발효', '한식', '양식', '셰프', '조리사',
+    '영양사', '건강기능', 'haccp', '식자재', '먹거리', '미식', '식생활',
+    '푸드테크', '식료', '간식', '음식', '농정원', '농림',
+  ];
+
+  bool get foodRelated {
+    final hay = '$title $organizer'.toLowerCase();
+    return _foodKeywords.any((k) => hay.contains(k));
+  }
+
   /// 마감 임박 여부(7일 이내)
   bool get closingSoon {
     if (deadline == null) return false;

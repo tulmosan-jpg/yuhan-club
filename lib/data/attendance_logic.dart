@@ -3,7 +3,10 @@ import '../models/attendance.dart';
 /// 출석 날짜 목록으로부터 스트릭/요약을 계산하는 공용 로직.
 class AttendanceLogic {
   /// 커피 보상을 받기 위한 연속 출석 횟수(학과회비로 제공).
-  static const int coffeeStreak = 5;
+  static const int coffeeStreak = 2;
+
+  /// 스트릭 트랙에 표시할 칸 수(보상 기준과 별개로 시각적 길이 유지).
+  static const int streakTrackDays = 5;
 
   /// 보상 단계 (커피 한 종류만).
   static const List<RewardTier> defaultTiers = [

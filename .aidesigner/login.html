@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>유한대 식품영양학과 - 로그인 (aidesigner ultradesign 시안)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <style>
+        :root { --primary:#1F9D6B; --primary-dark:#17795A; --text-deep:#114033; --surface-tonal:#E0F5EB; --bg-color:#FAFAFA; }
+        body { font-family:'Pretendard',-apple-system,system-ui,'Apple SD Gothic Neo','Noto Sans KR',sans-serif; background:var(--bg-color); color:var(--text-deep); }
+    </style>
+</head>
+<body class="relative w-full min-h-[100dvh] flex justify-center">
+    <main class="w-full max-w-[430px] min-h-[100dvh] bg-[#FAFAFA] flex flex-col px-6 pt-16 pb-8">
+        <div class="flex flex-col items-center">
+            <div class="w-[110px] h-[110px] rounded-full bg-[#E0F5EB] flex items-center justify-center mb-6 shadow-inner">
+                <img src="https://cdn.aidesigner.ai/image-tools/10b24bc5960a89a0/1786368516200-6d74972f-606c-447b-b519-8f3534acee19.png" alt="엠블럼" class="w-[90px] h-[90px] object-contain">
+            </div>
+            <h1 class="text-[26px] font-bold text-[#114033] tracking-tight mb-2">유한대 식품영양학과</h1>
+            <p class="text-[15px] text-gray-500 font-medium mb-10">학과 동아리 앱에 로그인</p>
+        </div>
+        <div class="flex p-1 bg-white border border-[#00000014] rounded-full mb-8 shadow-sm">
+            <button class="flex-1 py-[14px] text-[15px] font-bold text-white bg-[#1F9D6B] rounded-full">로그인</button>
+            <button class="flex-1 py-[14px] text-[15px] font-medium text-gray-500 rounded-full">회원가입</button>
+        </div>
+        <form class="flex flex-col gap-4">
+            <div class="relative flex items-center">
+                <i class="ph ph-envelope-simple absolute left-[18px] text-[22px] text-[#17795A]"></i>
+                <input type="email" placeholder="이메일" class="w-full h-[56px] pl-12 pr-4 bg-white border border-[#00000014] rounded-[14px] text-[15px]">
+            </div>
+            <div class="relative flex items-center">
+                <i class="ph ph-lock-key absolute left-[18px] text-[22px] text-[#17795A]"></i>
+                <input type="password" placeholder="비밀번호" class="w-full h-[56px] pl-12 pr-12 bg-white border border-[#00000014] rounded-[14px] text-[15px]">
+                <button type="button" class="absolute right-[18px] text-gray-400"><i class="ph ph-eye text-[22px]"></i></button>
+            </div>
+            <div class="flex justify-end mt-2 mb-8">
+                <a href="#" class="text-[14px] font-semibold text-[#1F9D6B]">비밀번호 찾기 ›</a>
+            </div>
+            <button type="button" class="w-full h-[56px] bg-gradient-to-br from-[#1F9D6B] to-[#17795A] text-white rounded-[14px] font-bold text-[16px] shadow-[0_8px_20px_rgba(31,157,107,0.25)]">로그인</button>
+        </form>
+        <div class="mt-auto pt-10 text-center">
+            <p class="text-[14px] text-gray-500 font-medium">계정이 없으신가요? <a href="#" class="text-[#1F9D6B] font-bold ml-1.5">회원가입</a></p>
+        </div>
+    </main>
+</body>
+</html>

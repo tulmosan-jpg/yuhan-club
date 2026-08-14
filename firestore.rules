@@ -2,23 +2,124 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 대외활동/박람회: 누구나 읽기(자동수집분 포함), 쓰기는 운영진만.
-    // TODO: 운영진 판별을 Auth custom claim(admin) 등으로 강화.
+    // 관리자 판별: admins/{uid} 문서 존재 여부.
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // ── 관리자 목록 ──
+    // 읽기: 본인 문서(관리자 여부 확인) 또는 관리자는 전체 목록.
+    // 쓰기: 기존 관리자만(관리자가 새 관리자를 추가/삭제). 자가등록 불가.
+    match /admins/{userId} {
+      allow read: if isAdmin()
+        || (request.auth != null && request.auth.uid == userId);
+      allow write: if isAdmin();
+    }
+
+    // 그룹 멤버 판별.
+    function isGroupMember(gid) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/groups/$(gid)/members/$(request.auth.uid));
+    }
+
+    // ── 그룹(팀) ──
+    // 그룹 문서(이름+PIN): 멤버/관리자만 읽기, 관리자만 쓰기.
+    match /groups/{gid} {
+      allow read: if isAdmin() || isGroupMember(gid);
+      allow write: if isAdmin();
+
+      // 멤버십: 본인이 올바른 PIN을 제출하면 가입.
+      match /members/{uid} {
+        allow read: if isAdmin() || isGroupMember(gid);
+        allow create: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.userId == uid
+          && get(/databases/$(database)/documents/groups/$(gid)).data.pin
+             == request.resource.data.pin;
+        allow delete: if isAdmin() || request.auth.uid == uid;
+      }
+
+      // 그룹 출석 가능일: 멤버 읽기, 관리자 쓰기.
+      match /attendance_dates/{day} {
+        allow read: if isAdmin() || isGroupMember(gid);
+        allow write: if isAdmin();
+      }
+
+      // 그룹 출석 체크(회원별): 등록된 출석일에만 본인이 생성. 수정/삭제 불가.
+      match /attendance/{uid}/checkins/{day} {
+        allow read: if isAdmin() || isGroupMember(gid);
+        allow create: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.userId == uid
+          && exists(/databases/$(database)/documents/groups/$(gid)/attendance_dates/$(day));
+        allow update, delete: if false;
+      }
+
+      // 참석 응답(RSVP): 본인이 자유롭게 설정/변경. 관리자·멤버 읽기.
+      match /attendance/{uid}/rsvp/{day} {
+        allow read: if isAdmin() || isGroupMember(gid);
+        allow write: if request.auth != null && request.auth.uid == uid
+          && isGroupMember(gid);
+      }
+    }
+
+    // 그룹 공개 인덱스(이름만): 로그인 사용자 누구나 읽기(멘토 선택용), 관리자만 쓰기.
+    match /group_index/{gid} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // ── 대외활동/박람회 ──
+    // 읽기: 누구나(자동수집분 포함, 앱은 로그인 전에도 목록 노출 가능).
+    // 쓰기: 클라이언트 금지. 등록/자동수집은 서비스계정(firebase_sync)이나
+    //       Firebase 콘솔에서만 수행하며 이들은 보안 규칙을 우회한다.
+    //       (앱은 activities를 읽기 전용으로만 사용 → 변조 차단)
     match /activities/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if false;
     }
 
-    // 멘토링 보고서: 작성자 본인만.
-    match /reports/{id} {
-      allow read, write: if request.auth != null
-        && request.auth.uid == resource.data.authorId;
-      allow create: if request.auth != null;
-    }
-
-    // 출석: 본인 문서만.
-    match /attendance/{userId}/days/{day} {
+    // ── 사용자 프로필 (프로필 사진 등) ──
+    // 본인 문서만 읽기/쓰기.
+    match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── 동아리 보고서 ──
+    // 열람: 작성자 본인, 관리자, 또는 같은 그룹 멤버(그룹 지정된 경우).
+    // 생성: authorId=본인 강제. 수정: 본인만(authorId 불변). 삭제: 본인 또는 관리자.
+    match /reports/{id} {
+      allow read: if isAdmin()
+        || (request.auth != null && request.auth.uid == resource.data.authorId)
+        || (resource.data.groupId != null && isGroupMember(resource.data.groupId));
+      allow create: if request.auth != null
+        && request.resource.data.authorId == request.auth.uid;
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.authorId
+        && request.resource.data.authorId == resource.data.authorId;
+      allow delete: if isAdmin() || (request.auth != null
+        && request.auth.uid == resource.data.authorId);
+    }
+
+    // ── 출석 가능 일정 (멘토/관리자 등록) ──
+    // 읽기: 로그인 사용자 누구나(출석 가능일 확인). 쓰기: 관리자만.
+    match /attendance_dates/{day} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // ── 출석 ──
+    // 본인 또는 관리자만 읽기(관리자는 collectionGroup 으로 전체 출석 확인).
+    // 생성: 본인 uid + userId 일치 + 그 날짜가 등록된 출석 가능일일 때만.
+    //       (day = 문서ID = 'yyyy-MM-dd', attendance_dates/{day} 존재 필요)
+    // 기록은 수정/삭제 불가(변조 방지).
+    match /attendance/{userId}/days/{day} {
+      allow read: if isAdmin()
+        || (request.auth != null && request.auth.uid == userId);
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.userId == userId
+        && exists(/databases/$(database)/documents/attendance_dates/$(day));
+      allow update, delete: if false;
     }
   }
 }

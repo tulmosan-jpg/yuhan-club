@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/auth_service.dart';
-import '../data/repository.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/home_screen.dart';
 import 'app_config.dart';
@@ -12,19 +11,17 @@ import 'app_config.dart';
 ///
 /// - Mock 모드(USE_MOCK=true): 로그인 없이 바로 홈(오프라인/디자인 확인용).
 /// - 실제 모드: Firebase Auth authStateChanges 를 구독해
-///   미로그인 → [LoginScreen], 로그인 → 해당 사용자 기준 [HomeScreen].
+///   미로그인 → [LoginScreen], 로그인 → [HomeScreen].
+///
+/// AppRepository 는 main.dart 최상위(MaterialApp 위)에서 제공하므로
+/// push 된 화면들도 접근할 수 있다. FirebaseRepository 가 uid 를 동적으로 읽어
+/// 사용자별 재생성이 필요 없다.
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Mock 모드에선 Auth 를 건너뛴다.
-    if (AppConfig.useMock) {
-      return Provider<AppRepository>(
-        create: (_) => AppConfig.createRepository(),
-        child: const HomeScreen(),
-      );
-    }
+    if (AppConfig.useMock) return const HomeScreen();
 
     return StreamBuilder<User?>(
       stream: context.read<AuthService>().authState,
@@ -34,17 +31,9 @@ class AuthGate extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        final user = snapshot.data;
-        if (user == null) {
-          return const LoginScreen();
-        }
-        // 사용자가 바뀌면 key 로 Provider(및 저장소)를 재생성한다.
-        // 사용자 uid/이름은 FirebaseRepository 가 Auth 에서 직접 읽는다.
-        return Provider<AppRepository>(
-          key: ValueKey(user.uid),
-          create: (_) => AppConfig.createRepository(),
-          child: const HomeScreen(),
-        );
+        return snapshot.data == null
+            ? const LoginScreen()
+            : const HomeScreen();
       },
     );
   }

@@ -44,17 +44,29 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   table_calendar: ^3.2.1
+  shared_preferences: ^2.3.2
+  image_picker: ^1.1.2
+  image: ^4.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
+  flutter_launcher_icons: ^0.14.4
+  # 권장 린트 세트. analysis_options.yaml 에서 활성화됨.
   flutter_lints: ^6.0.0
+
+# 앱 런처 아이콘 (aidesigner 생성, 유한 녹색 브랜드).
+flutter_launcher_icons:
+  image_path: "assets/store/app_icon.png"
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  adaptive_icon_background: "#1F9D6B"
+  adaptive_icon_foreground: "assets/store/app_icon.png"
+  web:
+    generate: true
+    image_path: "assets/store/app_icon.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

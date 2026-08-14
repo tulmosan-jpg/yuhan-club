@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -8,7 +9,10 @@ import 'app/app_config.dart';
 import 'app/auth_gate.dart';
 import 'app/theme.dart';
 import 'data/auth_service.dart';
+import 'data/login_prefs.dart';
+import 'data/repository.dart';
 import 'firebase_options.dart';
+import 'l10n/locale_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,28 +22,49 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const YuhanFnApp());
+  // 자동 로그인 게이트: 콜드 스타트 시 자동 로그인을 켜지 않았다면
+  // 이전 세션에 남아있는 로그인을 해제해 로그인 화면부터 시작한다.
+  // (앱 실행 중 새로 로그인한 세션에는 영향 없음 — 여기는 시작 1회만 실행)
+  if (!AppConfig.useMock && FirebaseAuth.instance.currentUser != null) {
+    final autoLogin = await LoginPrefs.autoLoginEnabled();
+    if (!autoLogin) {
+      await FirebaseAuth.instance.signOut();
+    }
+  }
+
+  final localeProvider = LocaleProvider();
+  await localeProvider.load();
+
+  runApp(YuhanFnApp(localeProvider: localeProvider));
 }
 
 class YuhanFnApp extends StatelessWidget {
-  const YuhanFnApp({super.key});
+  const YuhanFnApp({super.key, required this.localeProvider});
+  final LocaleProvider localeProvider;
 
   @override
   Widget build(BuildContext context) {
-    return Provider<AuthService>(
-      create: (_) => AuthService(),
-      child: MaterialApp(
-        title: AppConfig.appTitle,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        locale: const Locale('ko'),
-        supportedLocales: const [Locale('ko'), Locale('en')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        home: const AuthGate(),
+    return MultiProvider(
+      providers: [
+        Provider<AuthService>(create: (_) => AuthService()),
+        // 최상위에서 제공 → push 된 화면들도 접근 가능.
+        Provider<AppRepository>(create: (_) => AppConfig.createRepository()),
+        ChangeNotifierProvider<LocaleProvider>.value(value: localeProvider),
+      ],
+      child: Consumer<LocaleProvider>(
+        builder: (context, lp, _) => MaterialApp(
+          title: AppConfig.appTitle,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          locale: lp.locale,
+          supportedLocales: LocaleProvider.supported,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: const AuthGate(),
+        ),
       ),
     );
   }

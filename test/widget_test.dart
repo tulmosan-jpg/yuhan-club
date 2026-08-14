@@ -1,14 +1,33 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:yuhan_club/main.dart';
+import 'package:yuhan_club/l10n/app_strings.dart';
 
 void main() {
-  testWidgets('앱이 정상적으로 뜨고 홈 탭이 보인다', (WidgetTester tester) async {
-    await tester.pumpWidget(const YuhanFnApp());
-    await tester.pump(const Duration(milliseconds: 400));
+  testWidgets('언어(ko/en)에 따라 번역 문자열이 바뀐다', (WidgetTester tester) async {
+    Future<void> pumpWith(Locale locale) async {
+      await tester.pumpWidget(MaterialApp(
+        locale: locale,
+        supportedLocales: const [Locale('ko'), Locale('en')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Text(tr(context, 'nav_home')),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+    }
 
-    // 하단 네비게이션 탭 라벨 확인
-    expect(find.text('보고서'), findsWidgets);
-    expect(find.text('출석'), findsWidgets);
+    await pumpWith(const Locale('ko'));
+    expect(find.text('홈'), findsOneWidget);
+
+    await pumpWith(const Locale('en'));
+    expect(find.text('Home'), findsOneWidget);
   });
 }

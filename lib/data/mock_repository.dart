@@ -1,6 +1,7 @@
 import '../models/report.dart';
 import '../models/activity.dart';
 import '../models/attendance.dart';
+import '../models/group.dart';
 import 'repository.dart';
 import 'attendance_logic.dart';
 
@@ -118,6 +119,7 @@ class MockRepository implements AppRepository {
         title: report.title,
         content: report.content,
         feedback: report.feedback,
+        photos: report.photos,
         status: report.status,
         updatedAt: report.updatedAt,
       );
@@ -129,6 +131,50 @@ class MockRepository implements AppRepository {
       _reports.add(saved);
     }
     return saved;
+  }
+
+  // 목 모드에서는 관리자 기능 시연을 위해 관리자로 취급.
+  @override
+  Future<bool> isAdmin() async {
+    await _delay();
+    return true;
+  }
+
+  @override
+  Future<List<MentoringReport>> fetchAllReports() async {
+    await _delay();
+    return [..._reports]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  }
+
+  @override
+  Future<void> deleteReport(String reportId) async {
+    await _delay();
+    _reports.removeWhere((r) => r.id == reportId);
+  }
+
+  @override
+  Future<List<MemberAttendance>> fetchAllAttendance() async {
+    await _delay();
+    return [
+      MemberAttendance(
+          userId: 'me',
+          name: '홍길동',
+          summary: AttendanceLogic.summarize(_attendanceDays)),
+      MemberAttendance(
+          userId: 'u2',
+          name: '김회원',
+          summary: AttendanceLogic.summarize([
+            for (int i = 0; i < 3; i++)
+              AttendanceRecord.dayOf(DateTime.now().subtract(Duration(days: i)))
+          ])),
+      MemberAttendance(
+          userId: 'u3',
+          name: '이학생',
+          summary: AttendanceLogic.summarize([
+            AttendanceRecord.dayOf(
+                DateTime.now().subtract(const Duration(days: 5)))
+          ])),
+    ];
   }
 
   @override
@@ -157,6 +203,175 @@ class MockRepository implements AppRepository {
     if (_attendanceDays.contains(today)) return false;
     _attendanceDays.add(today);
     return true;
+  }
+
+  // 데모: 오늘 + 어제 + 내일을 출석 가능일로.
+  final List<DateTime> _attendanceDates = [
+    AttendanceRecord.dayOf(DateTime.now().subtract(const Duration(days: 1))),
+    AttendanceRecord.dayOf(DateTime.now()),
+    AttendanceRecord.dayOf(DateTime.now().add(const Duration(days: 1))),
+  ];
+
+  @override
+  Future<List<DateTime>> fetchAttendanceDates() async {
+    await _delay();
+    return [..._attendanceDates]..sort();
+  }
+
+  @override
+  Future<void> addAttendanceDate(DateTime date) async {
+    await _delay();
+    final d = AttendanceRecord.dayOf(date);
+    if (!_attendanceDates.contains(d)) _attendanceDates.add(d);
+  }
+
+  @override
+  Future<void> removeAttendanceDate(DateTime date) async {
+    await _delay();
+    _attendanceDates.remove(AttendanceRecord.dayOf(date));
+  }
+
+  // ── 그룹(데모) ──
+  final List<Group> _groups = [
+    const Group(id: 'g1', name: '홍길동 멘토팀', pin: '1234', memberCount: 3),
+    const Group(id: 'g2', name: '김영양 멘토팀', pin: '5678', memberCount: 2),
+  ];
+  final Set<String> _myGroupIds = {'g1'};
+
+  @override
+  Future<String> createGroup(String name, String pin) async {
+    await _delay();
+    final id = 'g${DateTime.now().millisecondsSinceEpoch}';
+    _groups.add(Group(id: id, name: name, pin: pin));
+    return id;
+  }
+
+  @override
+  Future<List<Group>> fetchGroups() async {
+    await _delay();
+    return [..._groups];
+  }
+
+  @override
+  Future<void> deleteGroup(String groupId) async {
+    await _delay();
+    _groups.removeWhere((g) => g.id == groupId);
+  }
+
+  @override
+  Future<List<GroupInfo>> fetchGroupIndex() async {
+    await _delay();
+    return _groups.map((g) => GroupInfo(id: g.id, name: g.name)).toList();
+  }
+
+  @override
+  Future<List<GroupInfo>> fetchMyGroups() async {
+    await _delay();
+    return _groups
+        .where((g) => _myGroupIds.contains(g.id))
+        .map((g) => GroupInfo(id: g.id, name: g.name))
+        .toList();
+  }
+
+  @override
+  Future<bool> joinGroup(String groupId, String pin) async {
+    await _delay();
+    final g = _groups.where((g) => g.id == groupId);
+    if (g.isEmpty || g.first.pin != pin.trim()) return false;
+    _myGroupIds.add(groupId);
+    return true;
+  }
+
+  @override
+  Future<List<MentoringReport>> fetchGroupReports(String groupId) async {
+    await _delay();
+    return [..._reports]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  }
+
+  // 그룹별 출석(데모): 그룹→날짜, 그룹→내 체크인.
+  final Map<String, List<DateTime>> _groupDates = {
+    'g1': [
+      AttendanceRecord.dayOf(DateTime.now()),
+      AttendanceRecord.dayOf(DateTime.now().add(const Duration(days: 7))),
+    ],
+  };
+  final Map<String, List<DateTime>> _groupMine = {'g1': []};
+
+  @override
+  Future<List<DateTime>> fetchGroupAttendanceDates(String gid) async {
+    await _delay();
+    return [...?_groupDates[gid]]..sort();
+  }
+
+  @override
+  Future<void> addGroupAttendanceDate(String gid, DateTime date) async {
+    await _delay();
+    (_groupDates[gid] ??= []).add(AttendanceRecord.dayOf(date));
+  }
+
+  @override
+  Future<void> removeGroupAttendanceDate(String gid, DateTime date) async {
+    await _delay();
+    _groupDates[gid]?.remove(AttendanceRecord.dayOf(date));
+  }
+
+  @override
+  Future<bool> checkInGroupToday(String gid) async {
+    await _delay();
+    final today = AttendanceRecord.dayOf(DateTime.now());
+    final mine = _groupMine[gid] ??= [];
+    if (mine.contains(today)) return false;
+    mine.add(today);
+    return true;
+  }
+
+  @override
+  Future<AttendanceSummary> fetchMyGroupAttendance(String gid) async {
+    await _delay();
+    return AttendanceLogic.summarize(_groupMine[gid] ?? []);
+  }
+
+  @override
+  Future<List<MemberAttendance>> fetchGroupMemberAttendance(String gid) async {
+    await _delay();
+    return [
+      MemberAttendance(
+          userId: 'me',
+          name: '홍길동',
+          summary: AttendanceLogic.summarize(_groupMine[gid] ?? [])),
+      MemberAttendance(
+          userId: 'u2',
+          name: '김멘티',
+          summary: AttendanceLogic.summarize(
+              [AttendanceRecord.dayOf(DateTime.now())])),
+    ];
+  }
+
+  final Map<String, Map<String, Rsvp>> _rsvp = {}; // gid → (dayKey → Rsvp)
+
+  @override
+  Future<void> setRsvp(
+      String gid, DateTime day, bool available, String reason) async {
+    await _delay();
+    final d = AttendanceRecord.dayOf(day);
+    (_rsvp[gid] ??= {})[AttendanceRecord.keyOf(d)] = Rsvp(
+        userId: 'me',
+        userName: '홍길동',
+        day: d,
+        available: available,
+        reason: reason.trim());
+  }
+
+  @override
+  Future<Map<String, Rsvp>> fetchMyRsvp(String gid) async {
+    await _delay();
+    return {...?_rsvp[gid]};
+  }
+
+  @override
+  Future<List<Rsvp>> fetchGroupRsvp(String gid) async {
+    await _delay();
+    return (_rsvp[gid]?.values.toList()) ?? [];
   }
 
   Future<void> _delay() =>

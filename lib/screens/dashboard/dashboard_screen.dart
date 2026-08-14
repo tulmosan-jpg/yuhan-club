@@ -1,12 +1,20 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/app_config.dart';
 import '../../app/theme.dart';
 import '../../data/auth_service.dart';
+import '../../data/profile_service.dart';
 import '../../data/repository.dart';
 import '../../data/attendance_logic.dart';
+import '../../l10n/app_strings.dart';
+import '../../l10n/locale_provider.dart';
+import '../calendar/calendar_screen.dart';
+import '../settings/notification_settings_screen.dart';
 import '../../models/activity.dart';
 import '../../models/attendance.dart';
 import '../../models/report.dart';
@@ -33,15 +41,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<_DashboardData> _load() async {
     final repo = context.read<AppRepository>();
+    // 출석은 그룹별. 내 첫 그룹의 출석을 홈 스트릭에 반영.
+    final myGroups = await repo.fetchMyGroups();
     final results = await Future.wait([
-      repo.fetchAttendance(),
+      myGroups.isEmpty
+          ? repo.fetchAttendance()
+          : repo.fetchMyGroupAttendance(myGroups.first.id),
       repo.fetchActivities(),
       repo.fetchReports(),
     ]);
+    // 요약용: 다음 출석일 + 미응답(RSVP) 개수.
+    DateTime? nextDate;
+    int pendingRsvp = 0;
+    String? groupName = myGroups.isEmpty ? null : myGroups.first.name;
+    if (myGroups.isNotEmpty) {
+      final gid = myGroups.first.id;
+      final dates = await repo.fetchGroupAttendanceDates(gid);
+      final rsvp = await repo.fetchMyRsvp(gid);
+      final today = AttendanceRecord.dayOf(DateTime.now());
+      final upcoming = dates.where((d) => !d.isBefore(today)).toList()..sort();
+      nextDate = upcoming.isEmpty ? null : upcoming.first;
+      pendingRsvp = upcoming
+          .where((d) => !rsvp.containsKey(AttendanceRecord.keyOf(d)))
+          .length;
+    }
     return _DashboardData(
       attendance: results[0] as AttendanceSummary,
       activities: results[1] as List<Activity>,
       reports: results[2] as List<MentoringReport>,
+      groupName: groupName,
+      nextDate: nextDate,
+      pendingRsvp: pendingRsvp,
     );
   }
 
@@ -57,6 +87,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (snap.hasError || !snap.hasData) {
+            return RefreshIndicator(
+              onRefresh: () async => setState(() => _future = _load()),
+              child: ListView(
+                children: [
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(Icons.cloud_off,
+                            size: 40, color: Colors.grey.shade400),
+                        const SizedBox(height: 12),
+                        Text(tr(context, 'dashboard_error'),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey.shade500)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
           final d = snap.data!;
           final upcoming = d.activities
               .where((a) => !a.closed && a.deadline != null)
@@ -69,20 +121,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 _Greeting(name: repo.currentUserName),
                 const SizedBox(height: 20),
+                _SummaryRow(
+                  data: d,
+                  onNavigate: widget.onNavigate,
+                ),
+                const SizedBox(height: 12),
+                _CalendarButton(),
+                const SizedBox(height: 20),
                 _StreakCard(summary: d.attendance),
                 const SizedBox(height: 28),
-                _SectionHeader(title: '빠른 실행'),
+                _SectionHeader(title: tr(context, 'quick_actions')),
                 const SizedBox(height: 12),
                 _QuickActions(onNavigate: widget.onNavigate),
                 const SizedBox(height: 28),
                 _SectionHeader(
-                  title: '마감 임박 대외활동',
-                  actionLabel: '전체보기',
+                  title: tr(context, 'closing_soon_section'),
+                  actionLabel: tr(context, 'see_all'),
                   onAction: () => widget.onNavigate?.call(2),
                 ),
                 const SizedBox(height: 12),
                 if (upcoming.isEmpty)
-                  const _EmptyCard(text: '마감 예정 활동이 없습니다.')
+                  _EmptyCard(text: tr(context, 'no_upcoming'))
                 else
                   ...upcoming.take(3).map((a) => Padding(
                         padding: const EdgeInsets.only(bottom: 10),
@@ -91,6 +150,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onTap: () => widget.onNavigate?.call(2),
                         ),
                       )),
+                const SizedBox(height: 28),
+                _SectionHeader(title: tr(context, 'links_section')),
+                const SizedBox(height: 12),
+                const _HomepageLinks(),
               ],
             ),
           );
@@ -102,9 +165,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 // ── 인사 헤더 ──────────────────────────────────────────────────────
-class _Greeting extends StatelessWidget {
+class _Greeting extends StatefulWidget {
   const _Greeting({required this.name});
   final String name;
+
+  @override
+  State<_Greeting> createState() => _GreetingState();
+}
+
+class _GreetingState extends State<_Greeting> {
+  final ProfileService _profile = ProfileService();
+  Uint8List? _photo;
+  bool _busy = false;
+
+  String get name => widget.name;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!AppConfig.useMock) {
+      _profile.load().then((bytes) {
+        if (mounted && bytes != null) setState(() => _photo = bytes);
+      });
+    }
+  }
+
+  Future<void> _changePhoto() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final bytes = await _profile.pickFromGallery();
+      if (!mounted) return;
+      if (bytes != null) {
+        setState(() => _photo = bytes);
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(tr(context, 'photo_updated'))));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(tr(context, 'photo_failed'))));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _removePhoto() async {
+    setState(() => _photo = null);
+    if (!AppConfig.useMock) await _profile.remove();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,15 +230,15 @@ class _Greeting extends StatelessWidget {
                   Image.asset('assets/images/yuhan_emblem.png',
                       width: 16, height: 16),
                   const SizedBox(width: 6),
-                  const Text('유한대학교 식품영양학과',
-                      style: TextStyle(
+                  Text(tr(context, 'dept_full'),
+                      style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: AppTheme.brand600)),
                 ],
               ),
               const SizedBox(height: 6),
-              Text('안녕하세요, $name님 👋',
+              Text(tr(context, 'greeting', {'name': name}),
                   style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -137,10 +247,21 @@ class _Greeting extends StatelessWidget {
           ),
         ),
         PopupMenuButton<String>(
-          tooltip: '계정',
+          tooltip: tr(context, 'account'),
           onSelected: (v) async {
-            if (v == 'logout' && !AppConfig.useMock) {
-              await context.read<AuthService>().signOut();
+            if (v == 'photo') {
+              await _changePhoto();
+            } else if (v == 'remove_photo') {
+              await _removePhoto();
+            } else if (v == 'notif') {
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const NotificationSettingsScreen()));
+            } else if (v == 'lang') {
+              await context.read<LocaleProvider>().toggle();
+            } else if (v == 'logout') {
+              if (!AppConfig.useMock) {
+                await context.read<AuthService>().signOut();
+              }
             }
           },
           itemBuilder: (context) => [
@@ -150,13 +271,54 @@ class _Greeting extends StatelessWidget {
               child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
             ),
             const PopupMenuDivider(),
-            const PopupMenuItem(
+            PopupMenuItem(
+              value: 'photo',
+              child: Row(
+                children: [
+                  const Icon(Icons.photo_library_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Text(tr(context, 'change_photo')),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'notif',
+              child: Row(
+                children: [
+                  const Icon(Icons.notifications_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Text(tr(context, 'notif_settings')),
+                ],
+              ),
+            ),
+            if (_photo != null)
+              PopupMenuItem(
+                value: 'remove_photo',
+                child: Row(
+                  children: [
+                    const Icon(Icons.hide_image_outlined, size: 18),
+                    const SizedBox(width: 8),
+                    Text(tr(context, 'remove_photo')),
+                  ],
+                ),
+              ),
+            PopupMenuItem(
+              value: 'lang',
+              child: Row(
+                children: [
+                  const Icon(Icons.translate, size: 18),
+                  const SizedBox(width: 8),
+                  Text(tr(context, 'switch_lang')),
+                ],
+              ),
+            ),
+            PopupMenuItem(
               value: 'logout',
               child: Row(
                 children: [
-                  Icon(Icons.logout, size: 18),
-                  SizedBox(width: 8),
-                  Text('로그아웃'),
+                  const Icon(Icons.logout, size: 18),
+                  const SizedBox(width: 8),
+                  Text(tr(context, 'logout')),
                 ],
               ),
             ),
@@ -168,12 +330,196 @@ class _Greeting extends StatelessWidget {
               color: AppTheme.brandTonal,
               shape: BoxShape.circle,
               border: Border.all(color: const Color(0xFFE4E4E7)),
+              image: _photo != null
+                  ? DecorationImage(
+                      image: MemoryImage(_photo!), fit: BoxFit.cover)
+                  : null,
             ),
-            child: const Icon(Icons.person_outline,
-                size: 22, color: AppTheme.brandOnTonal),
+            child: _photo != null
+                ? (_busy
+                    ? const Center(
+                        child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white)))
+                    : null)
+                : (_busy
+                    ? const Center(
+                        child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.brandOnTonal)))
+                    : const Icon(Icons.person_outline,
+                        size: 22, color: AppTheme.brandOnTonal)),
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── 통합 일정 보기 버튼 ─────────────────────────────────────────────
+class _CalendarButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CalendarScreen())),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0x0F000000)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.calendar_month_outlined,
+                  size: 22, color: AppTheme.brand600),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(tr(context, 'open_calendar'),
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700)),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFFBDBDBD)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── 요약 타일 (다음 출석일 / 미제출 보고서 / 미응답 일정) ──────────────
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({required this.data, this.onNavigate});
+  final _DashboardData data;
+  final void Function(int index)? onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final drafts =
+        data.reports.where((r) => r.status == ReportStatus.draft).length;
+
+    String nextValue;
+    if (data.groupName == null) {
+      nextValue = '-';
+    } else if (data.nextDate == null) {
+      nextValue = '-';
+    } else {
+      final days = AttendanceRecord.dayOf(data.nextDate!)
+          .difference(AttendanceRecord.dayOf(DateTime.now()))
+          .inDays;
+      nextValue = days <= 0
+          ? tr(context, 'dday_today2')
+          : tr(context, 'dday_n', {'n': '$days'});
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: _tile(
+            context,
+            icon: Icons.event_available,
+            label: tr(context, 'summary_next_attend'),
+            value: nextValue,
+            sub: data.groupName == null
+                ? tr(context, 'summary_no_group')
+                : (data.nextDate == null
+                    ? null
+                    : DateFormat('M/d (E)', 'ko').format(data.nextDate!)),
+            onTap: () => onNavigate?.call(3),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _tile(
+            context,
+            icon: Icons.edit_note,
+            label: tr(context, 'summary_drafts'),
+            value: '$drafts',
+            highlight: drafts > 0,
+            onTap: () => onNavigate?.call(1),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _tile(
+            context,
+            icon: Icons.how_to_reg_outlined,
+            label: tr(context, 'summary_pending_rsvp'),
+            value: '${data.pendingRsvp}',
+            highlight: data.pendingRsvp > 0,
+            onTap: () => onNavigate?.call(3),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tile(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required String value,
+      String? sub,
+      bool highlight = false,
+      VoidCallback? onTap}) {
+    return Material(
+      color: highlight ? AppTheme.brandTonal : Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+                color: highlight
+                    ? AppTheme.brand200
+                    : const Color(0x0F000000)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon,
+                  size: 18,
+                  color: highlight ? AppTheme.brand600 : Colors.grey.shade500),
+              const SizedBox(height: 8),
+              Text(value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: highlight
+                          ? AppTheme.brandOnTonal
+                          : const Color(0xFF18181B))),
+              const SizedBox(height: 2),
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade600)),
+              if (sub != null)
+                Text(sub,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 10.5, color: Colors.grey.shade400)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -185,7 +531,7 @@ class _StreakCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final goal = AttendanceLogic.coffeeStreak; // 5
+    final goal = AttendanceLogic.coffeeStreak; // 2 (연속 2일 → 커피)
     final streak = summary.currentStreak.clamp(0, goal);
     final remaining = (goal - streak).clamp(0, goal);
 
@@ -233,8 +579,8 @@ class _StreakCard extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       remaining == 0
-                          ? '연속 출석 $streak일! 🎉'
-                          : '연속 출석 $streak일차!',
+                          ? tr(context, 'streak_done', {'n': '$streak'})
+                          : tr(context, 'streak_ongoing', {'n': '$streak'}),
                       style: const TextStyle(
                           fontSize: 19,
                           fontWeight: FontWeight.bold,
@@ -243,8 +589,8 @@ class _StreakCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       remaining == 0
-                          ? '커피 리워드를 받을 수 있어요.'
-                          : '커피 획득까지 $remaining일 남았어요.',
+                          ? tr(context, 'streak_reward_ready')
+                          : tr(context, 'streak_remaining', {'n': '$remaining'}),
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -266,7 +612,7 @@ class _StreakCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          _StreakTrack(streak: streak, goal: goal),
+          _StreakTrack(streak: summary.currentStreak),
         ],
       ),
     );
@@ -274,18 +620,25 @@ class _StreakCard extends StatelessWidget {
 }
 
 class _StreakTrack extends StatelessWidget {
-  const _StreakTrack({required this.streak, required this.goal});
+  const _StreakTrack({required this.streak});
   final int streak;
-  final int goal;
 
   @override
   Widget build(BuildContext context) {
-    final labels = ['월', '화', '수', '목', '금'];
+    final trackDays = AttendanceLogic.streakTrackDays;
+    final rewardIndex = AttendanceLogic.coffeeStreak - 1;
+    final labels = [
+      tr(context, 'wd_mon'),
+      tr(context, 'wd_tue'),
+      tr(context, 'wd_wed'),
+      tr(context, 'wd_thu'),
+      tr(context, 'wd_fri'),
+    ];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(goal, (i) {
+      children: List.generate(trackDays, (i) {
         final done = i < streak;
-        final isReward = i == goal - 1;
+        final isReward = i == rewardIndex;
         final label = i < labels.length ? labels[i] : '${i + 1}';
         return Column(
           children: [
@@ -313,7 +666,7 @@ class _StreakTrack extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              isReward ? '리워드' : label,
+              isReward ? tr(context, 'reward') : label,
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: done || isReward ? FontWeight.bold : FontWeight.w500,
@@ -341,7 +694,7 @@ class _QuickActions extends StatelessWidget {
         Expanded(
           child: _ActionTile(
             icon: Icons.edit_document,
-            label: '보고서 작성',
+            label: tr(context, 'qa_write_report'),
             onTap: () => onNavigate?.call(1),
           ),
         ),
@@ -349,7 +702,7 @@ class _QuickActions extends StatelessWidget {
         Expanded(
           child: _ActionTile(
             icon: Icons.confirmation_number_outlined,
-            label: '대외활동',
+            label: tr(context, 'qa_activities'),
             onTap: () => onNavigate?.call(2),
           ),
         ),
@@ -357,7 +710,7 @@ class _QuickActions extends StatelessWidget {
         Expanded(
           child: _ActionTile(
             icon: Icons.event_available,
-            label: '출석체크',
+            label: tr(context, 'qa_checkin'),
             highlighted: true,
             onTap: () => onNavigate?.call(3),
           ),
@@ -486,7 +839,11 @@ class _ActivityTile extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('${a.deadline!.month}월',
+                    Text(
+                        Localizations.localeOf(context).languageCode == 'en'
+                            ? DateFormat('MMM', 'en').format(a.deadline!)
+                            : tr(context, 'month_ko',
+                                {'n': '${a.deadline!.month}'}),
                         style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -507,7 +864,7 @@ class _ActivityTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _tag(a.type),
+                    _tag(context, a.type),
                     const SizedBox(height: 4),
                     Text(a.title,
                         maxLines: 1,
@@ -523,8 +880,8 @@ class _ActivityTile extends StatelessWidget {
                             size: 13, color: const Color(0xFFA1A1AA)),
                         const SizedBox(width: 4),
                         Text(
-                          '마감 ${DateFormat('MM.dd').format(a.deadline!)}'
-                          '${soon ? ' · 마감임박' : ''}',
+                          '${tr(context, 'due', {'date': DateFormat('MM.dd').format(a.deadline!)})}'
+                          '${soon ? ' · ${tr(context, 'closing_soon')}' : ''}',
                           style: TextStyle(
                               fontSize: 12,
                               color: soon
@@ -545,7 +902,7 @@ class _ActivityTile extends StatelessWidget {
     );
   }
 
-  Widget _tag(ActivityType type) {
+  Widget _tag(BuildContext context, ActivityType type) {
     final Color c;
     switch (type) {
       case ActivityType.fair:
@@ -564,12 +921,96 @@ class _ActivityTile extends StatelessWidget {
         color: c.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(type.label,
+      child: Text(activityTypeLabel(context, type),
           style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.3,
               color: c)),
+    );
+  }
+}
+
+// ── 홈페이지 바로가기 ──────────────────────────────────────────────
+class _HomepageLinks extends StatelessWidget {
+  const _HomepageLinks();
+
+  static const _univUrl = 'https://www.yuhan.ac.kr/index.do';
+  static const _deptUrl = 'https://fn.yuhan.ac.kr/index.do';
+
+  Future<void> _open(BuildContext context, String url) async {
+    final ok = await launchUrl(Uri.parse(url),
+        mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'cannot_open_link'))));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _LinkTile(
+          icon: Icons.school_outlined,
+          label: tr(context, 'univ_home'),
+          onTap: () => _open(context, _univUrl),
+        ),
+        const SizedBox(height: 10),
+        _LinkTile(
+          icon: Icons.restaurant_menu_outlined,
+          label: tr(context, 'dept_home'),
+          onTap: () => _open(context, _deptUrl),
+        ),
+      ],
+    );
+  }
+}
+
+class _LinkTile extends StatelessWidget {
+  const _LinkTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0x14000000)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: AppTheme.brand600),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF3F3F46))),
+              ),
+              const Icon(Icons.open_in_new,
+                  size: 15, color: Color(0xFFA1A1AA)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -599,9 +1040,15 @@ class _DashboardData {
   final AttendanceSummary attendance;
   final List<Activity> activities;
   final List<MentoringReport> reports;
+  final String? groupName;
+  final DateTime? nextDate;
+  final int pendingRsvp;
   _DashboardData({
     required this.attendance,
     required this.activities,
     required this.reports,
+    this.groupName,
+    this.nextDate,
+    this.pendingRsvp = 0,
   });
 }

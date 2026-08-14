@@ -1,6 +1,7 @@
 import '../models/report.dart';
 import '../models/activity.dart';
 import '../models/attendance.dart';
+import '../models/group.dart';
 import 'repository.dart';
 import 'api_repository.dart';
 
@@ -28,11 +29,66 @@ class CompositeRepository implements AppRepository {
   Future<List<MentoringReport>> fetchReports() => base.fetchReports();
   @override
   Future<MentoringReport> saveReport(MentoringReport r) => base.saveReport(r);
+  @override
+  Future<bool> isAdmin() => base.isAdmin();
+  @override
+  Future<List<MentoringReport>> fetchAllReports() => base.fetchAllReports();
+  @override
+  Future<void> deleteReport(String id) => base.deleteReport(id);
+  @override
+  Future<List<MemberAttendance>> fetchAllAttendance() =>
+      base.fetchAllAttendance();
+  @override
+  Future<String> createGroup(String name, String pin) =>
+      base.createGroup(name, pin);
+  @override
+  Future<List<Group>> fetchGroups() => base.fetchGroups();
+  @override
+  Future<void> deleteGroup(String id) => base.deleteGroup(id);
+  @override
+  Future<List<GroupInfo>> fetchGroupIndex() => base.fetchGroupIndex();
+  @override
+  Future<List<GroupInfo>> fetchMyGroups() => base.fetchMyGroups();
+  @override
+  Future<bool> joinGroup(String id, String pin) => base.joinGroup(id, pin);
+  @override
+  Future<List<MentoringReport>> fetchGroupReports(String id) =>
+      base.fetchGroupReports(id);
+  @override
+  Future<List<DateTime>> fetchGroupAttendanceDates(String id) =>
+      base.fetchGroupAttendanceDates(id);
+  @override
+  Future<void> addGroupAttendanceDate(String id, DateTime d) =>
+      base.addGroupAttendanceDate(id, d);
+  @override
+  Future<void> removeGroupAttendanceDate(String id, DateTime d) =>
+      base.removeGroupAttendanceDate(id, d);
+  @override
+  Future<bool> checkInGroupToday(String id) => base.checkInGroupToday(id);
+  @override
+  Future<AttendanceSummary> fetchMyGroupAttendance(String id) =>
+      base.fetchMyGroupAttendance(id);
+  @override
+  Future<List<MemberAttendance>> fetchGroupMemberAttendance(String id) =>
+      base.fetchGroupMemberAttendance(id);
+  @override
+  Future<void> setRsvp(String id, DateTime day, bool a, String r) =>
+      base.setRsvp(id, day, a, r);
+  @override
+  Future<Map<String, Rsvp>> fetchMyRsvp(String id) => base.fetchMyRsvp(id);
+  @override
+  Future<List<Rsvp>> fetchGroupRsvp(String id) => base.fetchGroupRsvp(id);
 
   @override
   Future<AttendanceSummary> fetchAttendance() => base.fetchAttendance();
   @override
   Future<bool> checkInToday() => base.checkInToday();
+  @override
+  Future<List<DateTime>> fetchAttendanceDates() => base.fetchAttendanceDates();
+  @override
+  Future<void> addAttendanceDate(DateTime d) => base.addAttendanceDate(d);
+  @override
+  Future<void> removeAttendanceDate(DateTime d) => base.removeAttendanceDate(d);
 
   @override
   Future<List<Activity>> fetchActivities({ActivityType? type}) async {

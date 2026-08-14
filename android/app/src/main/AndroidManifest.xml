@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="yuhan_club"
+        android:label="유한대 식품영양학과"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
