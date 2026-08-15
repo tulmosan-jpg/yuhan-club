@@ -75,15 +75,6 @@ class MockRepository implements AppRepository {
       location: '수도권 사업장',
       deadline: DateTime.now().add(const Duration(days: 15)),
     ),
-    Activity(
-      id: 'a4',
-      type: ActivityType.seminar,
-      title: '임상영양사 진로 특강',
-      organizer: '식품영양학과 학생회',
-      description: '병원 임상영양사 선배 초청 특강. 진로 Q&A 세션 포함.',
-      startDate: DateTime.now().add(const Duration(days: 3)),
-      location: '보건관 401호',
-    ),
   ];
 
   // 데모용 출석 이력: 최근 4일 연속 출석(오늘 제외).
@@ -155,25 +146,27 @@ class MockRepository implements AppRepository {
   @override
   Future<List<MemberAttendance>> fetchAllAttendance() async {
     await _delay();
+    final schedule = _attendanceDates;
     return [
       MemberAttendance(
           userId: 'me',
           name: '홍길동',
-          summary: AttendanceLogic.summarize(_attendanceDays)),
+          summary:
+              AttendanceLogic.summarize(_attendanceDays, schedule: schedule)),
       MemberAttendance(
           userId: 'u2',
           name: '김회원',
           summary: AttendanceLogic.summarize([
             for (int i = 0; i < 3; i++)
               AttendanceRecord.dayOf(DateTime.now().subtract(Duration(days: i)))
-          ])),
+          ], schedule: schedule)),
       MemberAttendance(
           userId: 'u3',
           name: '이학생',
           summary: AttendanceLogic.summarize([
             AttendanceRecord.dayOf(
                 DateTime.now().subtract(const Duration(days: 5)))
-          ])),
+          ], schedule: schedule)),
     ];
   }
 
@@ -193,7 +186,8 @@ class MockRepository implements AppRepository {
   @override
   Future<AttendanceSummary> fetchAttendance() async {
     await _delay();
-    return AttendanceLogic.summarize(_attendanceDays);
+    return AttendanceLogic.summarize(_attendanceDays,
+        schedule: _attendanceDates);
   }
 
   @override
@@ -328,22 +322,26 @@ class MockRepository implements AppRepository {
   @override
   Future<AttendanceSummary> fetchMyGroupAttendance(String gid) async {
     await _delay();
-    return AttendanceLogic.summarize(_groupMine[gid] ?? []);
+    return AttendanceLogic.summarize(_groupMine[gid] ?? [],
+        schedule: _groupDates[gid]);
   }
 
   @override
   Future<List<MemberAttendance>> fetchGroupMemberAttendance(String gid) async {
     await _delay();
+    final schedule = _groupDates[gid];
     return [
       MemberAttendance(
           userId: 'me',
           name: '홍길동',
-          summary: AttendanceLogic.summarize(_groupMine[gid] ?? [])),
+          summary: AttendanceLogic.summarize(_groupMine[gid] ?? [],
+              schedule: schedule)),
       MemberAttendance(
           userId: 'u2',
           name: '김멘티',
           summary: AttendanceLogic.summarize(
-              [AttendanceRecord.dayOf(DateTime.now())])),
+              [AttendanceRecord.dayOf(DateTime.now())],
+              schedule: schedule)),
     ];
   }
 

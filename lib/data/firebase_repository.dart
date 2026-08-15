@@ -85,11 +85,7 @@ class FirebaseRepository implements AppRepository {
     if (type != null) q = q.where('type', isEqualTo: type.name);
     final snap = await q.get();
     final list = snap.docs.map(Activity.fromDoc).toList()
-      ..sort((a, b) {
-        final ad = a.deadline ?? a.startDate ?? DateTime(2100);
-        final bd = b.deadline ?? b.startDate ?? DateTime(2100);
-        return ad.compareTo(bd);
-      });
+      ..sort(activityOrder);
     return list;
   }
 
@@ -99,12 +95,14 @@ class FirebaseRepository implements AppRepository {
 
   @override
   Future<AttendanceSummary> fetchAttendance() async {
-    final snap = await _daysCol.get();
+    final results = await Future.wait([_daysCol.get(), fetchAttendanceDates()]);
+    final snap = results[0] as QuerySnapshot<Map<String, dynamic>>;
+    final schedule = results[1] as List<DateTime>;
     final days = snap.docs
         .map((d) => (d.data()['date'] as Timestamp?)?.toDate())
         .whereType<DateTime>()
         .toList();
-    return AttendanceLogic.summarize(days);
+    return AttendanceLogic.summarize(days, schedule: schedule);
   }
 
   @override
@@ -156,7 +154,10 @@ class FirebaseRepository implements AppRepository {
   @override
   Future<List<MemberAttendance>> fetchAllAttendance() async {
     // 모든 회원의 days 하위문서를 collectionGroup 으로 한 번에 조회.
-    final snap = await _db.collectionGroup('days').get();
+    final results =
+        await Future.wait([_db.collectionGroup('days').get(), fetchAttendanceDates()]);
+    final snap = results[0] as QuerySnapshot<Map<String, dynamic>>;
+    final schedule = results[1] as List<DateTime>;
     final byUser = <String, List<DateTime>>{};
     final names = <String, String>{};
     for (final d in snap.docs) {
@@ -172,7 +173,7 @@ class FirebaseRepository implements AppRepository {
       return MemberAttendance(
         userId: e.key,
         name: names[e.key] ?? '회원',
-        summary: AttendanceLogic.summarize(e.value),
+        summary: AttendanceLogic.summarize(e.value, schedule: schedule),
       );
     }).toList()
       // 연속 출석 많은 순 → 누적 많은 순.
@@ -323,12 +324,15 @@ class FirebaseRepository implements AppRepository {
 
   @override
   Future<AttendanceSummary> fetchMyGroupAttendance(String gid) async {
-    final snap = await _groupCheckins(gid, currentUserId).get();
+    final results = await Future.wait(
+        [_groupCheckins(gid, currentUserId).get(), fetchGroupAttendanceDates(gid)]);
+    final snap = results[0] as QuerySnapshot<Map<String, dynamic>>;
+    final schedule = results[1] as List<DateTime>;
     final days = snap.docs
         .map((d) => (d.data()['date'] as Timestamp?)?.toDate())
         .whereType<DateTime>()
         .toList();
-    return AttendanceLogic.summarize(days);
+    return AttendanceLogic.summarize(days, schedule: schedule);
   }
 
   // ── 참석 응답(RSVP) ──
@@ -376,15 +380,18 @@ class FirebaseRepository implements AppRepository {
   Future<List<Rsvp>> fetchGroupRsvp(String gid) async {
     final members =
         await _db.collection('groups').doc(gid).collection('members').get();
+    // 멤버별 RSVP 조회를 병렬로(N번 순차 왕복 방지).
+    final snaps = await Future.wait(
+        members.docs.map((m) => _rsvpCol(gid, m.id).get()));
     final out = <Rsvp>[];
-    for (final m in members.docs) {
-      final snap = await _rsvpCol(gid, m.id).get();
-      for (final doc in snap.docs) {
+    for (var i = 0; i < members.docs.length; i++) {
+      final memberId = members.docs[i].id;
+      for (final doc in snaps[i].docs) {
         final data = doc.data();
         final date = (data['date'] as Timestamp?)?.toDate();
         if (date == null) continue;
         out.add(Rsvp(
-          userId: (data['userId'] as String?) ?? m.id,
+          userId: (data['userId'] as String?) ?? memberId,
           userName: (data['userName'] as String?) ?? '회원',
           day: AttendanceRecord.dayOf(date),
           available: (data['available'] as bool?) ?? true,
@@ -397,19 +404,26 @@ class FirebaseRepository implements AppRepository {
 
   @override
   Future<List<MemberAttendance>> fetchGroupMemberAttendance(String gid) async {
-    final members =
-        await _db.collection('groups').doc(gid).collection('members').get();
+    final membersFut =
+        _db.collection('groups').doc(gid).collection('members').get();
+    final scheduleFut = fetchGroupAttendanceDates(gid);
+    final members = await membersFut;
+    final schedule = await scheduleFut;
+    // 멤버별 체크인 조회를 병렬로(N번 순차 왕복 방지).
+    final checkins = await Future.wait(
+        members.docs.map((m) => _groupCheckins(gid, m.id).get()));
     final result = <MemberAttendance>[];
-    for (final m in members.docs) {
-      final uid = m.id;
-      final name = (m.data()['name'] as String?) ?? '회원';
-      final ci = await _groupCheckins(gid, uid).get();
-      final days = ci.docs
+    for (var i = 0; i < members.docs.length; i++) {
+      final m = members.docs[i];
+      final days = checkins[i]
+          .docs
           .map((d) => (d.data()['date'] as Timestamp?)?.toDate())
           .whereType<DateTime>()
           .toList();
       result.add(MemberAttendance(
-          userId: uid, name: name, summary: AttendanceLogic.summarize(days)));
+          userId: m.id,
+          name: (m.data()['name'] as String?) ?? '회원',
+          summary: AttendanceLogic.summarize(days, schedule: schedule)));
     }
     result.sort((a, b) {
       final s = b.summary.currentStreak.compareTo(a.summary.currentStreak);

@@ -13,7 +13,6 @@ import '../../data/repository.dart';
 import '../../data/attendance_logic.dart';
 import '../../l10n/app_strings.dart';
 import '../../l10n/locale_provider.dart';
-import '../calendar/calendar_screen.dart';
 import '../settings/notification_settings_screen.dart';
 import '../../models/activity.dart';
 import '../../models/attendance.dart';
@@ -56,8 +55,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String? groupName = myGroups.isEmpty ? null : myGroups.first.name;
     if (myGroups.isNotEmpty) {
       final gid = myGroups.first.id;
-      final dates = await repo.fetchGroupAttendanceDates(gid);
-      final rsvp = await repo.fetchMyRsvp(gid);
+      // 출석일·RSVP를 병렬 조회.
+      final extra = await Future.wait([
+        repo.fetchGroupAttendanceDates(gid),
+        repo.fetchMyRsvp(gid),
+      ]);
+      final dates = extra[0] as List<DateTime>;
+      final rsvp = extra[1] as Map<String, Rsvp>;
       final today = AttendanceRecord.dayOf(DateTime.now());
       final upcoming = dates.where((d) => !d.isBefore(today)).toList()..sort();
       nextDate = upcoming.isEmpty ? null : upcoming.first;
@@ -120,13 +124,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
               children: [
                 _Greeting(name: repo.currentUserName),
-                const SizedBox(height: 20),
-                _SummaryRow(
-                  data: d,
-                  onNavigate: widget.onNavigate,
-                ),
-                const SizedBox(height: 12),
-                _CalendarButton(),
                 const SizedBox(height: 20),
                 _StreakCard(summary: d.attendance),
                 const SizedBox(height: 28),
@@ -357,169 +354,6 @@ class _GreetingState extends State<_Greeting> {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── 통합 일정 보기 버튼 ─────────────────────────────────────────────
-class _CalendarButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CalendarScreen())),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0x0F000000)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.calendar_month_outlined,
-                  size: 22, color: AppTheme.brand600),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(tr(context, 'open_calendar'),
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w700)),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFFBDBDBD)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── 요약 타일 (다음 출석일 / 미제출 보고서 / 미응답 일정) ──────────────
-class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({required this.data, this.onNavigate});
-  final _DashboardData data;
-  final void Function(int index)? onNavigate;
-
-  @override
-  Widget build(BuildContext context) {
-    final drafts =
-        data.reports.where((r) => r.status == ReportStatus.draft).length;
-
-    String nextValue;
-    if (data.groupName == null) {
-      nextValue = '-';
-    } else if (data.nextDate == null) {
-      nextValue = '-';
-    } else {
-      final days = AttendanceRecord.dayOf(data.nextDate!)
-          .difference(AttendanceRecord.dayOf(DateTime.now()))
-          .inDays;
-      nextValue = days <= 0
-          ? tr(context, 'dday_today2')
-          : tr(context, 'dday_n', {'n': '$days'});
-    }
-
-    return Row(
-      children: [
-        Expanded(
-          child: _tile(
-            context,
-            icon: Icons.event_available,
-            label: tr(context, 'summary_next_attend'),
-            value: nextValue,
-            sub: data.groupName == null
-                ? tr(context, 'summary_no_group')
-                : (data.nextDate == null
-                    ? null
-                    : DateFormat('M/d (E)', 'ko').format(data.nextDate!)),
-            onTap: () => onNavigate?.call(3),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _tile(
-            context,
-            icon: Icons.edit_note,
-            label: tr(context, 'summary_drafts'),
-            value: '$drafts',
-            highlight: drafts > 0,
-            onTap: () => onNavigate?.call(1),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _tile(
-            context,
-            icon: Icons.how_to_reg_outlined,
-            label: tr(context, 'summary_pending_rsvp'),
-            value: '${data.pendingRsvp}',
-            highlight: data.pendingRsvp > 0,
-            onTap: () => onNavigate?.call(3),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _tile(BuildContext context,
-      {required IconData icon,
-      required String label,
-      required String value,
-      String? sub,
-      bool highlight = false,
-      VoidCallback? onTap}) {
-    return Material(
-      color: highlight ? AppTheme.brandTonal : Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-                color: highlight
-                    ? AppTheme.brand200
-                    : const Color(0x0F000000)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon,
-                  size: 18,
-                  color: highlight ? AppTheme.brand600 : Colors.grey.shade500),
-              const SizedBox(height: 8),
-              Text(value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: highlight
-                          ? AppTheme.brandOnTonal
-                          : const Color(0xFF18181B))),
-              const SizedBox(height: 2),
-              Text(label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade600)),
-              if (sub != null)
-                Text(sub,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 10.5, color: Colors.grey.shade400)),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

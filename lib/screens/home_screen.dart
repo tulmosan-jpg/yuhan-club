@@ -8,6 +8,7 @@ import 'dashboard/dashboard_screen.dart';
 import 'reports/reports_screen.dart';
 import 'activities/activities_screen.dart';
 import 'attendance/attendance_screen.dart';
+import 'certifications/certifications_screen.dart';
 
 /// 하단 탭 네비게이션 셸.
 /// 관리자 로그인 세션에서는 보고서 관리 화면만 노출한다.
@@ -49,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
       const ReportsScreen(),
       const ActivitiesScreen(),
       const AttendanceScreen(),
+      const CertificationsScreen(),
     ];
     return Scaffold(
       body: IndexedStack(index: _index, children: pages),
@@ -75,6 +77,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.event_available_outlined),
             selectedIcon: const Icon(Icons.event_available),
             label: tr(context, 'nav_attendance'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.workspace_premium_outlined),
+            selectedIcon: const Icon(Icons.workspace_premium),
+            label: tr(context, 'nav_certs'),
           ),
         ],
       ),

@@ -14,25 +14,45 @@ class AttendanceLogic {
   ];
 
   /// [days]는 출석한 날짜들(자정 정규화 권장).
-  static AttendanceSummary summarize(List<DateTime> days) {
-    final normalized = days
-        .map(AttendanceRecord.dayOf)
-        .toSet()
-        .toList()
-      ..sort();
+  ///
+  /// [schedule]이 주어지면 **모임 예정일 기준**으로 연속 출석을 센다:
+  /// 오늘까지의 예정일을 최신순으로 훑어, 출석한 예정일이 연속되는 동안
+  /// 카운트하고 첫 결석에서 멈춘다(주 단위 등 하루 간격이 아닌 일정에 맞음).
+  /// [schedule]이 없으면 달력상 연속일 기준(개인 출석 등 하위호환).
+  static AttendanceSummary summarize(List<DateTime> days,
+      {List<DateTime>? schedule}) {
+    final daySet = days.map(AttendanceRecord.dayOf).toSet();
+    final normalized = daySet.toList()..sort();
 
     final today = AttendanceRecord.dayOf(DateTime.now());
-    final checkedInToday = normalized.contains(today);
+    final checkedInToday = daySet.contains(today);
 
-    // 현재 연속 출석: 오늘(또는 어제)부터 하루씩 거슬러 올라가며 카운트.
     int streak = 0;
-    var cursor = checkedInToday
-        ? today
-        : today.subtract(const Duration(days: 1));
-    final daySet = normalized.toSet();
-    while (daySet.contains(cursor)) {
-      streak++;
-      cursor = cursor.subtract(const Duration(days: 1));
+    if (schedule != null && schedule.isNotEmpty) {
+      // 오늘까지의 예정일(내림차순). 단, 오늘 모임은 아직 진행 중이므로
+      // 미출석이면 '결석'으로 간주하지 않고 건너뛴다.
+      final past = schedule
+          .map(AttendanceRecord.dayOf)
+          .toSet()
+          .where((d) =>
+              !d.isAfter(today) && !(d == today && !checkedInToday))
+          .toList()
+        ..sort((a, b) => b.compareTo(a));
+      for (final d in past) {
+        if (daySet.contains(d)) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+    } else {
+      // 오늘(또는 어제)부터 하루씩 거슬러 올라가며 카운트.
+      var cursor =
+          checkedInToday ? today : today.subtract(const Duration(days: 1));
+      while (daySet.contains(cursor)) {
+        streak++;
+        cursor = cursor.subtract(const Duration(days: 1));
+      }
     }
 
     return AttendanceSummary(

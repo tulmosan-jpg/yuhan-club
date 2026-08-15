@@ -103,11 +103,7 @@ class CompositeRepository implements AppRepository {
     final seen = {for (final a in admin) a.id};
     final merged = [...admin, ...api.where((a) => !seen.contains(a.id))];
 
-    merged.sort((a, b) {
-      final ad = a.deadline ?? a.startDate ?? DateTime(2100);
-      final bd = b.deadline ?? b.startDate ?? DateTime(2100);
-      return ad.compareTo(bd);
-    });
+    merged.sort(activityOrder);
     return merged;
   }
 }

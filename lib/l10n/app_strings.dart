@@ -28,6 +28,7 @@ const Map<String, List<String>> _dict = {
   'nav_reports': ['보고서', 'Reports'],
   'nav_activities': ['대외활동', 'Activities'],
   'nav_attendance': ['출석', 'Attendance'],
+  'nav_certs': ['자격증', 'Certs'],
 
   // 로그인
   'login_subtitle': ['학과 동아리 앱에 로그인', 'Sign in to the club app'],
@@ -79,6 +80,10 @@ const Map<String, List<String>> _dict = {
   'cal_attended': ['출석 완료', 'Attended'],
   'cal_deadline': ['{title} 마감', '{title} deadline'],
   'cal_no_events': ['이 날은 일정이 없습니다.', 'No events on this day.'],
+  'cal_month_no_events': ['이번 달 일정이 없습니다.', 'No events this month.'],
+  'cal_show_month': ['이번 달 전체 보기', 'Show whole month'],
+  'cal_month_events': ['이번 달 일정', 'This month'],
+  'cal_all_events': ['전체 일정', 'All schedule'],
   'legend_session': ['출석일', 'Session'],
   'legend_deadline': ['대외활동 마감', 'Activity deadline'],
   'summary_next_attend': ['다음 출석일', 'Next session'],
@@ -150,11 +155,13 @@ const Map<String, List<String>> _dict = {
   'activities_title': ['대외활동', 'Activities'],
   'filter_all': ['전체', 'All'],
   'filter_food': ['식품·영양', 'Food & Nutrition'],
+  'filter_past': ['지난 활동', 'Past'],
   'load_failed': ['불러오지 못했습니다.', 'Failed to load.'],
   'refresh': ['새로고침', 'Refresh'],
   'refreshed': ['최신 정보로 새로고침했습니다.', 'Refreshed with the latest.'],
   'no_activities': ['등록된 활동이 없습니다.', 'No activities yet.'],
   'no_food_activities': ['식품·영양 관련 활동이 아직 없습니다.', 'No food & nutrition activities yet.'],
+  'no_past_activities': ['지난 활동이 없습니다.', 'No past activities.'],
   'dday': ['D-{n}', 'D-{n}'],
   'dday_today': ['D-DAY', 'D-DAY'],
   'closed': ['마감', 'Closed'],
@@ -176,6 +183,27 @@ const Map<String, List<String>> _dict = {
       'See the full posting and apply on the original page.'],
   'detail_open_link': ['신청/상세 페이지 열기', 'Open posting page'],
   'cannot_open_link': ['링크를 열 수 없습니다.', 'Cannot open the link.'],
+
+  // 자격증·면허 정보
+  'certs_title': ['자격증·면허 정보', 'Certifications & Licenses'],
+  'open_certs': ['자격증·면허 정보', 'Certifications & Licenses'],
+  'certs_subtitle': ['식품·영양 관련 자격증과 면허를 한눈에', 'Food & nutrition credentials at a glance'],
+  'certs_section_license': ['면허 (국시원)', 'Licenses (KUKSIWON)'],
+  'certs_section_tech': ['국가기술자격 (큐넷)', 'National Technical Certs (Q-Net)'],
+  'certs_section_private': ['민간자격', 'Private Certifications'],
+  'certs_section_international': ['국제자격', 'International'],
+  'cert_eligibility': ['응시자격', 'Eligibility'],
+  'cert_subjects': ['시험과목', 'Exam subjects'],
+  'cert_method': ['시험방법', 'Format'],
+  'cert_pass': ['합격기준', 'Passing criteria'],
+  'cert_schedule': ['시행시기', 'Schedule'],
+  'cert_fee': ['응시료', 'Fee'],
+  'cert_issuer': ['시행기관', 'Issuer'],
+  'cert_official': ['공식 사이트에서 확인', 'Check official site'],
+  'certs_source_note': [
+    '※ 큐넷(q-net.or.kr)·국시원(kuksiwon.or.kr)·NSCA Korea(nscakorea.com)·ISSN(sportsnutritionsociety.org)·NASM(nasm.org) 공개 정보를 정리했습니다. 일정·응시료 등은 매년 바뀌니 공식 사이트에서 최종 확인하세요.',
+    '※ Summarized from Q-Net, KUKSIWON, NSCA Korea, ISSN & NASM. Schedules/fees change yearly — confirm on the official sites.'
+  ],
 
   // 보고서 목록
   'reports_title': ['동아리 보고서', 'Club Reports'],

@@ -56,7 +56,8 @@ class ActivityApiClient {
   }
 
   Future<List<Activity>> fetchActivities({ActivityType? type}) async {
-    final params = <String, String>{'limit': '100', 'open_only': 'true'};
+    // open_only=false: 지난 활동까지 받아와 통합 일정/‘지난 활동’ 필터에 사용.
+    final params = <String, String>{'limit': '200', 'open_only': 'false'};
     // 앱의 enum -> API category 역매핑
     const toCategory = {
       ActivityType.contest: '공모전',

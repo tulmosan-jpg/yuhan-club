@@ -95,3 +95,16 @@ abstract class AppRepository {
   /// 관리자: 그룹 전체 회원의 RSVP.
   Future<List<Rsvp>> fetchGroupRsvp(String groupId);
 }
+
+/// 대외활동 목록 정렬 기준.
+///
+/// 진행 중(미마감) 활동을 먼저 보여주되 마감 임박 순(마감일 오름차순),
+/// 지난(마감된) 활동은 뒤로 보내되 최근에 마감된 것부터(마감일 내림차순).
+int activityOrder(Activity a, Activity b) {
+  final ac = a.closed, bc = b.closed;
+  if (ac != bc) return ac ? 1 : -1; // 진행 중 먼저
+  final ad = a.deadline ?? a.startDate ?? DateTime(2100);
+  final bd = b.deadline ?? b.startDate ?? DateTime(2100);
+  // 진행 중: 오름차순(임박 먼저) / 지난 활동: 내림차순(최근 마감 먼저)
+  return ac ? bd.compareTo(ad) : ad.compareTo(bd);
+}

@@ -22,6 +22,7 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
   late Future<List<Activity>> _future;
   ActivityType? _filter;
   bool _foodOnly = false;
+  bool _pastOnly = false;
 
   @override
   void initState() {
@@ -82,20 +83,39 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
             );
           }
           var items = snap.data ?? [];
-          if (_foodOnly) {
-            items = items.where((a) => a.foodRelated).toList();
-          } else if (_filter != null) {
-            items = items.where((a) => a.type == _filter).toList();
+          if (_pastOnly) {
+            // 지난 활동: 마감된 것만 (정렬은 repository에서 최근 마감 우선)
+            items = items.where((a) => a.closed).toList();
+          } else {
+            // 그 외 탭: 진행 중(미마감)만 노출
+            items = items.where((a) => !a.closed).toList();
+            if (_foodOnly) {
+              items = items.where((a) => a.foodRelated).toList();
+            } else if (_filter != null) {
+              items = items.where((a) => a.type == _filter).toList();
+            }
           }
           return Column(
             children: [
               _TypeBar(
                 selected: _filter,
                 foodOnly: _foodOnly,
-                onSelected: (t) =>
-                    setState(() { _filter = t; _foodOnly = false; }),
-                onFoodSelected: () =>
-                    setState(() { _foodOnly = true; _filter = null; }),
+                pastOnly: _pastOnly,
+                onSelected: (t) => setState(() {
+                  _filter = t;
+                  _foodOnly = false;
+                  _pastOnly = false;
+                }),
+                onFoodSelected: () => setState(() {
+                  _foodOnly = true;
+                  _filter = null;
+                  _pastOnly = false;
+                }),
+                onPastSelected: () => setState(() {
+                  _pastOnly = true;
+                  _foodOnly = false;
+                  _filter = null;
+                }),
               ),
               Expanded(
                 child: RefreshIndicator(
@@ -108,9 +128,11 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
                                     MediaQuery.of(context).size.height * 0.3),
                             Center(
                               child: Text(
-                                  _foodOnly
-                                      ? tr(context, 'no_food_activities')
-                                      : tr(context, 'no_activities'),
+                                  _pastOnly
+                                      ? tr(context, 'no_past_activities')
+                                      : _foodOnly
+                                          ? tr(context, 'no_food_activities')
+                                          : tr(context, 'no_activities'),
                                   style: TextStyle(
                                       color: Colors.grey.shade500)),
                             ),
@@ -139,13 +161,17 @@ class _TypeBar extends StatelessWidget {
   const _TypeBar({
     required this.selected,
     required this.foodOnly,
+    required this.pastOnly,
     required this.onSelected,
     required this.onFoodSelected,
+    required this.onPastSelected,
   });
   final ActivityType? selected;
   final bool foodOnly;
+  final bool pastOnly;
   final ValueChanged<ActivityType?> onSelected;
   final VoidCallback onFoodSelected;
+  final VoidCallback onPastSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -155,14 +181,16 @@ class _TypeBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         children: [
-          _chip(tr(context, 'filter_all'), selected == null && !foodOnly,
-              () => onSelected(null)),
+          _chip(tr(context, 'filter_all'),
+              selected == null && !foodOnly && !pastOnly, () => onSelected(null)),
           // 식품영양학과 전용 섹션 — 식품·영양 관련만 모아보기
           _chip(tr(context, 'filter_food'), foodOnly, onFoodSelected,
               accent: true),
+          // 지난(마감된) 활동 모아보기
+          _chip(tr(context, 'filter_past'), pastOnly, onPastSelected),
           ...ActivityType.values.map(
             (t) => _chip(activityTypeLabel(context, t),
-                selected == t && !foodOnly, () => onSelected(t)),
+                selected == t && !foodOnly && !pastOnly, () => onSelected(t)),
           ),
         ],
       ),

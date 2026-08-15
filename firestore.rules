@@ -50,6 +50,7 @@ service cloud.firestore {
         allow read: if isAdmin() || isGroupMember(gid);
         allow create: if request.auth != null && request.auth.uid == uid
           && request.resource.data.userId == uid
+          && isGroupMember(gid)
           && exists(/databases/$(database)/documents/groups/$(gid)/attendance_dates/$(day));
         allow update, delete: if false;
       }
