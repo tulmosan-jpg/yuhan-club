@@ -71,8 +71,12 @@ abstract class AppRepository {
   /// 그룹의 출석 가능 날짜.
   Future<List<DateTime>> fetchGroupAttendanceDates(String groupId);
 
-  /// 관리자: 그룹 출석 날짜 추가/삭제.
-  Future<void> addGroupAttendanceDate(String groupId, DateTime date);
+  /// 그룹 일정(날짜 + 주제). 화면 표시용.
+  Future<List<ScheduleEntry>> fetchGroupSchedule(String groupId);
+
+  /// 관리자: 그룹 출석 날짜 추가/삭제. topic 은 그날 진행 주제(선택).
+  Future<void> addGroupAttendanceDate(String groupId, DateTime date,
+      {String topic});
   Future<void> removeGroupAttendanceDate(String groupId, DateTime date);
 
   /// 회원: 그룹에 오늘 출석. 이미 했으면 false.

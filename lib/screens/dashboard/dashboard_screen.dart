@@ -58,24 +58,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
       repo.fetchActivities(),
       repo.fetchReports(),
     ]);
-    // 요약용: 다음 출석일 + 미응답(RSVP) 개수.
+    // 요약용: 다음 출석일(+주제) + 미응답(RSVP) 개수.
     DateTime? nextDate;
+    String? nextTopic;
     int pendingRsvp = 0;
     String? groupName = myGroups.isEmpty ? null : myGroups.first.name;
     if (myGroups.isNotEmpty) {
       final gid = myGroups.first.id;
-      // 출석일·RSVP를 병렬 조회.
+      // 일정(주제 포함)·RSVP를 병렬 조회.
       final extra = await Future.wait([
-        repo.fetchGroupAttendanceDates(gid),
+        repo.fetchGroupSchedule(gid),
         repo.fetchMyRsvp(gid),
       ]);
-      final dates = extra[0] as List<DateTime>;
+      final schedule = extra[0] as List<ScheduleEntry>;
       final rsvp = extra[1] as Map<String, Rsvp>;
+      final dates = schedule.map((e) => e.date).toList();
       final today = AttendanceRecord.dayOf(DateTime.now());
-      final upcoming = dates.where((d) => !d.isBefore(today)).toList()..sort();
-      nextDate = upcoming.isEmpty ? null : upcoming.first;
+      final upcoming = schedule.where((e) => !e.date.isBefore(today)).toList()
+        ..sort((a, b) => a.date.compareTo(b.date));
+      nextDate = upcoming.isEmpty ? null : upcoming.first.date;
+      nextTopic = upcoming.isEmpty ? null : upcoming.first.topic;
       pendingRsvp = upcoming
-          .where((d) => !rsvp.containsKey(AttendanceRecord.keyOf(d)))
+          .where((e) => !rsvp.containsKey(AttendanceRecord.keyOf(e.date)))
           .length;
       // 출석일/RSVP 로컬 알림 리마인더 예약(백그라운드, 설정 토글 존중).
       if (!AppConfig.useMock) {
@@ -91,6 +95,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       reports: results[2] as List<MentoringReport>,
       groupName: groupName,
       nextDate: nextDate,
+      nextTopic: nextTopic,
       pendingRsvp: pendingRsvp,
     );
   }
@@ -142,6 +147,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _Greeting(name: repo.currentUserName),
                 const SizedBox(height: 20),
                 _StreakCard(summary: d.attendance),
+                if (d.nextDate != null) ...[
+                  const SizedBox(height: 16),
+                  _NextSessionCard(
+                    date: d.nextDate!,
+                    topic: d.nextTopic ?? '',
+                    onTap: () => widget.onNavigate?.call(3),
+                  ),
+                ],
                 const SizedBox(height: 28),
                 _SectionHeader(title: tr(context, 'quick_actions')),
                 const SizedBox(height: 12),
@@ -886,12 +899,106 @@ class _EmptyCard extends StatelessWidget {
   }
 }
 
+// ── 다음 일정(날짜 + 주제) 카드 ─────────────────────────────────
+class _NextSessionCard extends StatelessWidget {
+  const _NextSessionCard(
+      {required this.date, required this.topic, this.onTap});
+  final DateTime date;
+  final String topic;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final today = AttendanceRecord.dayOf(DateTime.now());
+    final diff = date.difference(today).inDays;
+    final dLabel = diff == 0
+        ? tr(context, 'today')
+        : (diff == 1 ? tr(context, 'tomorrow') : 'D-$diff');
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+            border: Border.all(color: const Color(0x0F000000)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AppTheme.brandTonal,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.event_available,
+                    color: AppTheme.brand600, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(tr(context, 'next_session'),
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey.shade500)),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: AppTheme.brand500,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(dLabel,
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(DateFormat('M월 d일 (E)', 'ko').format(date),
+                        style: const TextStyle(
+                            fontSize: 15.5, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 2),
+                    Text(topic.isEmpty ? tr(context, 'schedule_no_topic') : topic,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: topic.isEmpty
+                                ? Colors.grey.shade400
+                                : AppTheme.brandOnTonal,
+                            fontWeight: topic.isEmpty
+                                ? FontWeight.normal
+                                : FontWeight.w600)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: Colors.grey.shade400),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DashboardData {
   final AttendanceSummary attendance;
   final List<Activity> activities;
   final List<MentoringReport> reports;
   final String? groupName;
   final DateTime? nextDate;
+  final String? nextTopic;
   final int pendingRsvp;
   _DashboardData({
     required this.attendance,
@@ -899,6 +1006,7 @@ class _DashboardData {
     required this.reports,
     this.groupName,
     this.nextDate,
+    this.nextTopic,
     this.pendingRsvp = 0,
   });
 }

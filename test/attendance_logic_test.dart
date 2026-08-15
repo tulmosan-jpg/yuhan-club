@@ -37,6 +37,28 @@ void main() {
       final s = AttendanceLogic.summarize(attended, schedule: schedule);
       expect(s.currentStreak, 1); // 오늘 모임은 진행 중이므로 이전 streak 유지
     });
+
+    test('가장 최근 지난 예정일을 빠지면 과거 출석이 있어도 streak=0', () {
+      final schedule = [day(-14), day(-7), day(0)];
+      final attended = [day(-14)]; // 1주 전(가장 최근 지난 예정일) 결석
+      final s = AttendanceLogic.summarize(attended, schedule: schedule);
+      expect(s.currentStreak, 0);
+    });
+
+    test('예정일이 아닌 날 출석은 streak에 반영되지 않는다', () {
+      final schedule = [day(-7), day(0)];
+      // 예정일(-7)엔 결석, 엉뚱한 날(-3)에만 출석 기록
+      final attended = [day(-3)];
+      final s = AttendanceLogic.summarize(attended, schedule: schedule);
+      expect(s.currentStreak, 0);
+    });
+
+    test('커피 보상 기준(연속 2회) 도달 확인', () {
+      final schedule = [day(-7), day(0)];
+      final attended = [day(-7), day(0)];
+      final s = AttendanceLogic.summarize(attended, schedule: schedule);
+      expect(s.currentStreak >= AttendanceLogic.coffeeStreak, true);
+    });
   });
 
   test('스케줄 미지정 시 달력상 연속일 기준(하위호환)', () {

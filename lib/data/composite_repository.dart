@@ -58,8 +58,12 @@ class CompositeRepository implements AppRepository {
   Future<List<DateTime>> fetchGroupAttendanceDates(String id) =>
       base.fetchGroupAttendanceDates(id);
   @override
-  Future<void> addGroupAttendanceDate(String id, DateTime d) =>
-      base.addGroupAttendanceDate(id, d);
+  Future<List<ScheduleEntry>> fetchGroupSchedule(String id) =>
+      base.fetchGroupSchedule(id);
+  @override
+  Future<void> addGroupAttendanceDate(String id, DateTime d,
+          {String topic = ''}) =>
+      base.addGroupAttendanceDate(id, d, topic: topic);
   @override
   Future<void> removeGroupAttendanceDate(String id, DateTime d) =>
       base.removeGroupAttendanceDate(id, d);

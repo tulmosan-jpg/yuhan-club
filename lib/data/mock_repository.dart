@@ -290,6 +290,16 @@ class MockRepository implements AppRepository {
     ],
   };
   final Map<String, List<DateTime>> _groupMine = {'g1': []};
+  // 일정 주제: 'gid|yyyy-MM-dd' → topic (데모 시드)
+  final Map<String, String> _groupTopics = {
+    'g1|${AttendanceRecord.keyOf(AttendanceRecord.dayOf(DateTime.now()))}':
+        '오리엔테이션 · 조 편성',
+    'g1|${AttendanceRecord.keyOf(AttendanceRecord.dayOf(DateTime.now().add(const Duration(days: 7))))}':
+        '식품위생 특강',
+  };
+
+  String _topicKey(String gid, DateTime d) =>
+      '$gid|${AttendanceRecord.keyOf(AttendanceRecord.dayOf(d))}';
 
   @override
   Future<List<DateTime>> fetchGroupAttendanceDates(String gid) async {
@@ -298,15 +308,31 @@ class MockRepository implements AppRepository {
   }
 
   @override
-  Future<void> addGroupAttendanceDate(String gid, DateTime date) async {
+  Future<List<ScheduleEntry>> fetchGroupSchedule(String gid) async {
     await _delay();
-    (_groupDates[gid] ??= []).add(AttendanceRecord.dayOf(date));
+    final dates = [...?_groupDates[gid]]..sort();
+    return dates
+        .map((d) => ScheduleEntry(
+            date: d, topic: _groupTopics[_topicKey(gid, d)] ?? ''))
+        .toList();
+  }
+
+  @override
+  Future<void> addGroupAttendanceDate(String gid, DateTime date,
+      {String topic = ''}) async {
+    await _delay();
+    final day = AttendanceRecord.dayOf(date);
+    final list = _groupDates[gid] ??= [];
+    if (!list.contains(day)) list.add(day);
+    _groupTopics[_topicKey(gid, day)] = topic.trim();
   }
 
   @override
   Future<void> removeGroupAttendanceDate(String gid, DateTime date) async {
     await _delay();
-    _groupDates[gid]?.remove(AttendanceRecord.dayOf(date));
+    final day = AttendanceRecord.dayOf(date);
+    _groupDates[gid]?.remove(day);
+    _groupTopics.remove(_topicKey(gid, day));
   }
 
   @override

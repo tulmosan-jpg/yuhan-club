@@ -117,12 +117,17 @@ exports.onGroupScheduleCreated = onDocumentCreated(
     "groups/{gid}/attendance_dates/{day}",
     async (event) => {
       const gid = event.params.gid;
+      const topic = (event.data && event.data.data() &&
+        event.data.data().topic) || "";
+      const body = topic ?
+        `주제: ${topic} — 참석 여부를 응답해 주세요.` :
+        "출석 일정을 확인하고 참석 여부를 응답해 주세요.";
       const tokens = await collectTokens(
           await groupMemberUids(gid), "n_schedule_added");
       await sendTo(
           tokens,
           "새 모임 일정이 등록됐어요",
-          "출석 일정을 확인하고 참석 여부를 응답해 주세요.",
+          body,
           {type: "schedule_added", groupId: gid, day: event.params.day},
       );
     },

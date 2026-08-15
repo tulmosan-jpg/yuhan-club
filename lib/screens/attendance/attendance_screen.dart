@@ -22,6 +22,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Future<AttendanceSummary>? _future;
   bool _checking = false;
   List<DateTime> _dates = [];
+  Map<String, String> _topics = {}; // 날짜키 → 주제
   Map<String, Rsvp> _rsvp = {};
   List<GroupInfo> _groups = [];
   String? _gid;
@@ -54,8 +55,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (gid == null) return;
     final repo = context.read<AppRepository>();
     _future = repo.fetchMyGroupAttendance(gid);
-    repo.fetchGroupAttendanceDates(gid).then((d) {
-      if (mounted) setState(() => _dates = d);
+    repo.fetchGroupSchedule(gid).then((entries) {
+      if (!mounted) return;
+      setState(() {
+        _dates = entries.map((e) => e.date).toList();
+        _topics = {
+          for (final e in entries)
+            AttendanceRecord.keyOf(e.date): e.topic,
+        };
+      });
     });
     repo.fetchMyRsvp(gid).then((r) {
       if (mounted) setState(() => _rsvp = r);
@@ -248,6 +256,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     onChanged: (v) => setState(() {
                       _gid = v;
                       _dates = [];
+                      _topics = {};
                       _rsvp = {};
                       _reload();
                     }),
@@ -258,6 +267,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 const SizedBox(height: 16),
                 _ScheduleCard(
                   dates: _dates,
+                  topics: _topics,
                   attended: s.recentDays,
                   rsvp: _rsvp,
                   onTapDate: _openRsvp,
@@ -315,11 +325,13 @@ class _GroupSelector extends StatelessWidget {
 class _ScheduleCard extends StatelessWidget {
   const _ScheduleCard({
     required this.dates,
+    required this.topics,
     required this.attended,
     required this.rsvp,
     required this.onTapDate,
   });
   final List<DateTime> dates;
+  final Map<String, String> topics;
   final List<DateTime> attended;
   final Map<String, Rsvp> rsvp;
   final void Function(DateTime day) onTapDate;
@@ -383,10 +395,26 @@ class _ScheduleCard extends StatelessWidget {
                         color: done ? AppTheme.brand600 : Colors.grey.shade500,
                       ),
                       const SizedBox(width: 8),
-                      Text(DateFormat('M/d (E)', 'ko').format(d),
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w700)),
-                      const Spacer(),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(DateFormat('M/d (E)', 'ko').format(d),
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w700)),
+                            if ((topics[key] ?? '').isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(topics[key]!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600)),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       _rsvpBadge(context, r),
                       const SizedBox(width: 4),
                       Icon(Icons.chevron_right,

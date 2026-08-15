@@ -54,7 +54,7 @@ class _GroupAttendanceAdmin extends StatefulWidget {
 }
 
 class _GroupAttendanceAdminState extends State<_GroupAttendanceAdmin> {
-  late Future<List<DateTime>> _dates;
+  late Future<List<ScheduleEntry>> _schedule;
   late Future<List<MemberAttendance>> _members;
   late Future<List<Rsvp>> _rsvp;
 
@@ -66,7 +66,7 @@ class _GroupAttendanceAdminState extends State<_GroupAttendanceAdmin> {
 
   void _reload() {
     final repo = context.read<AppRepository>();
-    _dates = repo.fetchGroupAttendanceDates(widget.groupId);
+    _schedule = repo.fetchGroupSchedule(widget.groupId);
     _members = repo.fetchGroupMemberAttendance(widget.groupId);
     _rsvp = repo.fetchGroupRsvp(widget.groupId);
   }
@@ -80,13 +80,64 @@ class _GroupAttendanceAdminState extends State<_GroupAttendanceAdmin> {
       lastDate: DateTime(now.year + 2),
     );
     if (picked == null || !mounted) return;
+    // 그날 진행 주제 입력(선택).
+    final topic = await _askTopic(picked);
+    if (topic == null || !mounted) return; // 취소
     await context
         .read<AppRepository>()
-        .addGroupAttendanceDate(widget.groupId, picked);
+        .addGroupAttendanceDate(widget.groupId, picked, topic: topic);
     if (!mounted) return;
     setState(_reload);
     ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(tr(context, 'date_added'))));
+  }
+
+  /// 주제 입력 다이얼로그. 취소 시 null, 확인 시 입력값(빈 문자열 가능).
+  Future<String?> _askTopic(DateTime day, {String initial = ''}) {
+    final controller = TextEditingController(text: initial);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        titleTextStyle: const TextStyle(
+          fontFamily: 'Pretendard',
+          fontSize: 17,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF18181B),
+        ),
+        title: Text('${DateFormat('M/d (E)', 'ko').format(day)} '
+            '${tr(ctx, 'schedule_topic')}'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 40,
+          style: const TextStyle(fontFamily: 'Pretendard', fontSize: 15),
+          decoration: InputDecoration(
+            hintText: tr(ctx, 'schedule_topic_hint'),
+            hintStyle: TextStyle(
+                fontFamily: 'Pretendard', color: Colors.grey.shade400),
+          ),
+          onSubmitted: (v) => Navigator.pop(ctx, v),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(tr(ctx, 'cancel'))),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, controller.text),
+              child: Text(tr(ctx, 'confirm'))),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editTopic(ScheduleEntry e) async {
+    final topic = await _askTopic(e.date, initial: e.topic);
+    if (topic == null || !mounted) return;
+    await context
+        .read<AppRepository>()
+        .addGroupAttendanceDate(widget.groupId, e.date, topic: topic);
+    if (!mounted) return;
+    setState(_reload);
   }
 
   Future<void> _removeDate(DateTime d) async {
@@ -125,36 +176,68 @@ class _GroupAttendanceAdminState extends State<_GroupAttendanceAdmin> {
           Text(tr(context, 'schedule_hint'),
               style: TextStyle(fontSize: 12.5, color: Colors.grey.shade500)),
           const SizedBox(height: 12),
-          FutureBuilder<List<DateTime>>(
-            future: _dates,
+          FutureBuilder<List<ScheduleEntry>>(
+            future: _schedule,
             builder: (context, snap) {
-              final dates = snap.data ?? [];
-              if (dates.isEmpty) {
+              final entries = snap.data ?? [];
+              if (entries.isEmpty) {
                 return Text(tr(context, 'no_scheduled_dates'),
                     style: TextStyle(color: Colors.grey.shade500));
               }
               final today = AttendanceRecord.dayOf(DateTime.now());
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: dates.map((d) {
-                  final isToday = d == today;
-                  return Chip(
-                    backgroundColor:
-                        isToday ? AppTheme.brand500 : AppTheme.brandTonal,
-                    side: BorderSide.none,
-                    label: Text(DateFormat('M/d (E)', 'ko').format(d),
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+              return Column(
+                children: entries.map((e) {
+                  final isToday = e.date == today;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+                    decoration: BoxDecoration(
+                      color: isToday ? AppTheme.brandTonal : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0x0F000000)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.event,
+                            size: 18,
                             color: isToday
-                                ? Colors.white
-                                : AppTheme.brandOnTonal)),
-                    deleteIcon: Icon(Icons.close,
-                        size: 16,
-                        color:
-                            isToday ? Colors.white : AppTheme.brandOnTonal),
-                    onDeleted: () => _removeDate(d),
+                                ? AppTheme.brand600
+                                : Colors.grey.shade500),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(DateFormat('M/d (E)', 'ko').format(e.date),
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 2),
+                              Text(
+                                  e.topic.isEmpty
+                                      ? tr(context, 'schedule_no_topic')
+                                      : e.topic,
+                                  style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: e.topic.isEmpty
+                                          ? Colors.grey.shade400
+                                          : Colors.grey.shade700)),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.edit_outlined,
+                              size: 18, color: Colors.grey.shade600),
+                          tooltip: tr(context, 'schedule_topic'),
+                          onPressed: () => _editTopic(e),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close,
+                              size: 18, color: Color(0xFFE53E3E)),
+                          onPressed: () => _removeDate(e.date),
+                        ),
+                      ],
+                    ),
                   );
                 }).toList(),
               );

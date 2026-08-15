@@ -1,5 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// 출석 일정 1건: 날짜 + 그날 진행할 주제(선택).
+class ScheduleEntry {
+  final DateTime date; // 자정 기준
+  final String topic; // 그날 일정 주제(비어 있을 수 있음)
+
+  const ScheduleEntry({required this.date, this.topic = ''});
+}
+
 /// 하루 출석 기록
 class AttendanceRecord {
   final String id;

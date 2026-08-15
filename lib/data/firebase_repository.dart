@@ -293,11 +293,31 @@ class FirebaseRepository implements AppRepository {
   }
 
   @override
-  Future<void> addGroupAttendanceDate(String gid, DateTime date) async {
+  Future<List<ScheduleEntry>> fetchGroupSchedule(String gid) async {
+    final snap = await _groupDates(gid).get();
+    final list = snap.docs
+        .map((d) {
+          final date = (d.data()['date'] as Timestamp?)?.toDate();
+          if (date == null) return null;
+          return ScheduleEntry(
+            date: AttendanceRecord.dayOf(date),
+            topic: (d.data()['topic'] as String?) ?? '',
+          );
+        })
+        .whereType<ScheduleEntry>()
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+    return list;
+  }
+
+  @override
+  Future<void> addGroupAttendanceDate(String gid, DateTime date,
+      {String topic = ''}) async {
     final day = AttendanceRecord.dayOf(date);
-    await _groupDates(gid)
-        .doc(AttendanceRecord.keyOf(day))
-        .set({'date': Timestamp.fromDate(day)});
+    await _groupDates(gid).doc(AttendanceRecord.keyOf(day)).set({
+      'date': Timestamp.fromDate(day),
+      'topic': topic.trim(),
+    });
   }
 
   @override
