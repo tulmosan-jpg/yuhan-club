@@ -10,6 +10,7 @@ import 'app/auth_gate.dart';
 import 'app/theme.dart';
 import 'data/auth_service.dart';
 import 'data/login_prefs.dart';
+import 'data/notification_service.dart';
 import 'data/repository.dart';
 import 'firebase_options.dart';
 import 'l10n/locale_provider.dart';
@@ -31,6 +32,9 @@ Future<void> main() async {
       await FirebaseAuth.instance.signOut();
     }
   }
+
+  // 로컬 알림 플러그인 초기화(권한 요청은 로그인 후 대시보드에서).
+  await NotificationService.instance.init();
 
   final localeProvider = LocaleProvider();
   await localeProvider.load();

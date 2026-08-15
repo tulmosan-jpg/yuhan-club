@@ -129,8 +129,8 @@ const Map<String, List<String>> _dict = {
       'When a mentee marks not-going.'],
   'notif_saved': ['알림 설정을 저장했습니다.', 'Notification settings saved.'],
   'notif_not_wired_note': [
-    '※ 알림 설정만 저장됩니다. 실제 푸시 발송은 추후 활성화됩니다.',
-    '※ Settings are saved; actual push delivery will be enabled later.'
+    '※ 출석일·참석응답 리마인더는 기기에서 로컬 알림으로 발송됩니다. 새 보고서·공지 등 서버 알림은 추후 지원 예정입니다.',
+    '※ Attendance & RSVP reminders are delivered as on-device local notifications. Server-side alerts (new reports/notices) are planned.'
   ],
   'change_photo': ['프로필 사진 변경', 'Change photo'],
   'remove_photo': ['프로필 사진 삭제', 'Remove photo'],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/theme.dart';
+import '../../data/notification_service.dart';
 import '../../l10n/app_strings.dart';
 
 /// 알림 설정(로컬 저장). 멘티/멘토 알림을 분리해 켜고 끈다.
@@ -48,6 +49,10 @@ class _NotificationSettingsScreenState
     setState(() => _v[key] = value);
     final p = await SharedPreferences.getInstance();
     await p.setBool(key, value);
+    // 마스터 알림을 켜면 OS 권한 요청("허용하시겠습니까" 창).
+    if (key == 'notif_enabled' && value) {
+      await NotificationService.instance.requestPermission();
+    }
     if (mounted) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()

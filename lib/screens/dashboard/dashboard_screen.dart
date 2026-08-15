@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../app/app_config.dart';
 import '../../app/theme.dart';
 import '../../data/auth_service.dart';
+import '../../data/notification_service.dart';
 import '../../data/profile_service.dart';
 import '../../data/repository.dart';
 import '../../data/attendance_logic.dart';
@@ -36,6 +38,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _future = _load();
+    // 실제 모드 첫 진입 시 알림 권한 요청("허용하시겠습니까" 시스템 창).
+    // 이미 응답했으면 OS 가 다시 띄우지 않으므로 매번 호출해도 안전.
+    if (!AppConfig.useMock) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        NotificationService.instance.requestPermission();
+      });
+    }
   }
 
   Future<_DashboardData> _load() async {
@@ -68,6 +77,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       pendingRsvp = upcoming
           .where((d) => !rsvp.containsKey(AttendanceRecord.keyOf(d)))
           .length;
+      // 출석일/RSVP 로컬 알림 리마인더 예약(백그라운드, 설정 토글 존중).
+      if (!AppConfig.useMock) {
+        unawaited(NotificationService.instance.syncReminders(
+          attendanceDates: dates,
+          respondedDays: rsvp.keys.toSet(),
+        ));
+      }
     }
     return _DashboardData(
       attendance: results[0] as AttendanceSummary,
