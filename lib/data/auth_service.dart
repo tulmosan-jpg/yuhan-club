@@ -4,6 +4,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import '../firebase_options.dart';
+import 'messaging_service.dart';
+import 'notification_service.dart';
 
 /// 관리자 1명의 정보(관리자 관리 화면용).
 class AdminInfo {
@@ -65,9 +67,12 @@ class AuthService {
     );
   }
 
-  Future<void> signOut() {
+  Future<void> signOut() async {
     loggedInAsAdmin = false;
-    return _auth.signOut();
+    // 이 기기 FCM 토큰 제거(로그아웃한 계정에 푸시가 가지 않도록).
+    await MessagingService.instance.removeToken();
+    await NotificationService.instance.cancelAll();
+    await _auth.signOut();
   }
 
   // ── 관리자 관리 (기존 관리자만) ──

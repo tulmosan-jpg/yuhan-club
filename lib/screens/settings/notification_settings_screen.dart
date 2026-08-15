@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../app/app_config.dart';
 import '../../app/theme.dart';
+import '../../data/messaging_service.dart';
 import '../../data/notification_service.dart';
 import '../../l10n/app_strings.dart';
 
@@ -52,6 +54,10 @@ class _NotificationSettingsScreenState
     // 마스터 알림을 켜면 OS 권한 요청("허용하시겠습니까" 창).
     if (key == 'notif_enabled' && value) {
       await NotificationService.instance.requestPermission();
+    }
+    // 서버 알림 필터용으로 설정을 Firestore 에 동기화.
+    if (!AppConfig.useMock) {
+      await MessagingService.instance.syncPrefs();
     }
     if (mounted) {
       ScaffoldMessenger.of(context)

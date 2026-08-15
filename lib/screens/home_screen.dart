@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../app/app_config.dart';
 import '../data/auth_service.dart';
+import '../data/messaging_service.dart';
 import '../l10n/app_strings.dart';
 import 'admin/admin_home.dart';
 import 'dashboard/dashboard_screen.dart';
@@ -27,6 +29,15 @@ class _HomeScreenState extends State<HomeScreen> {
   // 관리자 여부를 실제 admins 컬렉션으로 확인(세션 플래그 대신 → 재시작에도 견고).
   late final Future<bool> _adminCheck =
       context.read<AuthService>().checkIsAdmin();
+
+  @override
+  void initState() {
+    super.initState();
+    // 로그인 세션에서 FCM 토큰 등록 + 알림 설정 동기화(서버 푸시 수신).
+    if (!AppConfig.useMock) {
+      MessagingService.instance.start();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

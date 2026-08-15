@@ -44,6 +44,18 @@ class NotificationService {
     await _plugin.initialize(
       settings: const InitializationSettings(android: android, iOS: darwin),
     );
+
+    // Android 채널을 미리 생성(백그라운드 FCM 도 이 채널/중요도 사용).
+    final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await androidImpl?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _channelId,
+        _channelName,
+        description: _channelDesc,
+        importance: Importance.high,
+      ),
+    );
     _initialized = true;
   }
 
@@ -144,6 +156,18 @@ class NotificationService {
         }
       }
     }
+  }
+
+  /// 즉시 알림 표시(FCM 포그라운드 메시지 등).
+  Future<void> show(String title, String body) async {
+    if (!_initialized) await init();
+    if (kIsWeb) return;
+    await _plugin.show(
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: title,
+      body: body,
+      notificationDetails: _details,
+    );
   }
 
   /// 모든 예약 알림 취소(로그아웃 등).
