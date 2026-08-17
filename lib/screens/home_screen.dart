@@ -23,8 +23,22 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _index = 0;
+  // 출석 탭 리워드 섹션으로 스크롤 요청 신호(값이 바뀔 때마다 스크롤).
+  final ValueNotifier<int> _rewardScroll = ValueNotifier(0);
 
   void _goTo(int i) => setState(() => _index = i);
+
+  // 홈 리워드 노드 → 출석 탭으로 이동 + 리워드 섹션으로 스크롤.
+  void _goToReward() {
+    setState(() => _index = 3);
+    _rewardScroll.value++;
+  }
+
+  @override
+  void dispose() {
+    _rewardScroll.dispose();
+    super.dispose();
+  }
 
   // 관리자 여부를 실제 admins 컬렉션으로 확인(세션 플래그 대신 → 재시작에도 견고).
   late final Future<bool> _adminCheck =
@@ -57,10 +71,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildMemberShell(BuildContext context) {
     final pages = [
-      DashboardScreen(onNavigate: _goTo),
+      DashboardScreen(onNavigate: _goTo, onReward: _goToReward),
       const ReportsScreen(),
       const ActivitiesScreen(),
-      const AttendanceScreen(),
+      AttendanceScreen(rewardScroll: _rewardScroll),
       const CertificationsScreen(),
     ];
     return Scaffold(

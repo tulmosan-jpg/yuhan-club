@@ -22,10 +22,13 @@ import '../../models/report.dart';
 
 /// 홈 대시보드: 오늘의 요약 (유한 녹색 브랜드 리디자인).
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, this.onNavigate});
+  const DashboardScreen({super.key, this.onNavigate, this.onReward});
 
   /// 하단 탭 전환 콜백 (0:홈 1:보고서 2:대외활동 3:출석).
   final void Function(int index)? onNavigate;
+
+  /// 리워드 노드 탭 → 출석 탭 리워드 섹션으로 이동.
+  final VoidCallback? onReward;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -146,7 +149,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 _Greeting(name: repo.currentUserName),
                 const SizedBox(height: 20),
-                _StreakCard(summary: d.attendance),
+                _StreakCard(
+                  summary: d.attendance,
+                  onReward:
+                      widget.onReward ?? () => widget.onNavigate?.call(3),
+                ),
                 if (d.nextDate != null) ...[
                   const SizedBox(height: 16),
                   _NextSessionCard(
@@ -389,8 +396,9 @@ class _GreetingState extends State<_Greeting> {
 
 // ── 연속 출석 스트릭 카드 ───────────────────────────────────────────
 class _StreakCard extends StatelessWidget {
-  const _StreakCard({required this.summary});
+  const _StreakCard({required this.summary, this.onReward});
   final AttendanceSummary summary;
+  final VoidCallback? onReward;
 
   @override
   Widget build(BuildContext context) {
@@ -475,7 +483,7 @@ class _StreakCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          _StreakTrack(streak: summary.currentStreak),
+          _StreakTrack(streak: summary.currentStreak, onReward: onReward),
         ],
       ),
     );
@@ -483,8 +491,9 @@ class _StreakCard extends StatelessWidget {
 }
 
 class _StreakTrack extends StatelessWidget {
-  const _StreakTrack({required this.streak});
+  const _StreakTrack({required this.streak, this.onReward});
   final int streak;
+  final VoidCallback? onReward;
 
   @override
   Widget build(BuildContext context) {
@@ -503,7 +512,7 @@ class _StreakTrack extends StatelessWidget {
         final done = i < streak;
         final isReward = i == rewardIndex;
         final label = i < labels.length ? labels[i] : '${i + 1}';
-        return Column(
+        final node = Column(
           children: [
             Container(
               width: isReward ? 32 : 26,
@@ -528,18 +537,36 @@ class _StreakTrack extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Text(
-              isReward ? tr(context, 'reward') : label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: done || isReward ? FontWeight.bold : FontWeight.w500,
-                color: isReward
-                    ? AppTheme.streakFlame
-                    : Colors.white.withValues(alpha: done ? 1 : 0.6),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isReward ? tr(context, 'reward') : label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight:
+                        done || isReward ? FontWeight.bold : FontWeight.w500,
+                    color: isReward
+                        ? AppTheme.streakFlame
+                        : Colors.white.withValues(alpha: done ? 1 : 0.6),
+                  ),
+                ),
+                if (isReward && onReward != null)
+                  Icon(Icons.chevron_right,
+                      size: 12, color: AppTheme.streakFlame),
+              ],
             ),
           ],
         );
+        // 리워드 노드는 탭하면 리워드(출석) 화면으로 이동.
+        if (isReward && onReward != null) {
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onReward,
+            child: node,
+          );
+        }
+        return node;
       }),
     );
   }

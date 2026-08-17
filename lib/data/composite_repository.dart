@@ -2,6 +2,7 @@ import '../models/report.dart';
 import '../models/activity.dart';
 import '../models/attendance.dart';
 import '../models/group.dart';
+import '../models/reward.dart';
 import 'repository.dart';
 import 'api_repository.dart';
 
@@ -82,6 +83,27 @@ class CompositeRepository implements AppRepository {
   Future<Map<String, Rsvp>> fetchMyRsvp(String id) => base.fetchMyRsvp(id);
   @override
   Future<List<Rsvp>> fetchGroupRsvp(String id) => base.fetchGroupRsvp(id);
+
+  @override
+  Future<RewardConfig> fetchRewardConfig() => base.fetchRewardConfig();
+  @override
+  Future<void> setRewardCode(String code) => base.setRewardCode(code);
+  @override
+  Future<void> setDrinkStock(String id, int count) =>
+      base.setDrinkStock(id, count);
+  @override
+  Future<List<Coupon>> fetchMyCoupons() => base.fetchMyCoupons();
+  @override
+  Future<List<Coupon>> fetchAllCoupons() => base.fetchAllCoupons();
+  @override
+  Future<int> fetchAvailableCoupons(AttendanceSummary s) =>
+      base.fetchAvailableCoupons(s);
+  @override
+  Future<Coupon> claimCoupon(String drinkId, AttendanceSummary s) =>
+      base.claimCoupon(drinkId, s);
+  @override
+  Future<bool> redeemCoupon(String couponId, String code) =>
+      base.redeemCoupon(couponId, code);
 
   @override
   Future<AttendanceSummary> fetchAttendance() => base.fetchAttendance();

@@ -70,9 +70,49 @@ const Map<String, List<String>> _dict = {
   'greeting': ['안녕하세요, {name}님 👋', 'Hi, {name} 👋'],
   'streak_done': ['연속 출석 {n}일! 🎉', '{n}-day streak! 🎉'],
   'streak_ongoing': ['연속 출석 {n}일차!', 'Day {n} streak!'],
-  'streak_reward_ready': ['커피 리워드를 받을 수 있어요.', 'Your coffee reward is ready.'],
-  'streak_remaining': ['커피 획득까지 {n}일 남았어요.', '{n} day(s) left until your coffee.'],
+  'streak_reward_ready': ['음료 리워드를 받을 수 있어요.', 'Your drink reward is ready.'],
+  'streak_remaining': ['리워드까지 {n}일 남았어요.', '{n} day(s) left until your reward.'],
   'reward': ['리워드', 'Reward'],
+  // 더벤티 리워드 섹션
+  'reward_section_title': ['리워드', 'Reward'],
+  'reward_section_sub': [
+    '연속 출석 시 더벤티 음료 쿠폰 1개 지급 (역곡북부역점 사용)',
+    'Earn a The Venti drink coupon for an attendance streak.'
+  ],
+  'reward_claim_n': ['음료 쿠폰 받기 ({n}개)', 'Claim drink coupon ({n})'],
+  'reward_none_yet': [
+    '{n}일 연속 출석하면 음료 쿠폰을 받을 수 있어요.',
+    'Attend {n} sessions in a row to earn a drink coupon.'
+  ],
+  'reward_stock': ['남은 수량', 'Remaining'],
+  'my_coupons': ['내 쿠폰', 'My coupons'],
+  'used_coupons': ['사용한 쿠폰', 'Used coupons'],
+  'coupon_issued': ['쿠폰이 발급됐어요! 내 쿠폰에서 확인하세요.', 'Coupon issued!'],
+  'coupon_sold_out': ['해당 음료 재고가 소진됐어요.', 'That drink is sold out.'],
+  'coupon_not_eligible': ['아직 받을 수 있는 리워드가 없어요.', 'No reward available yet.'],
+  'coupon_failed': ['쿠폰 발급에 실패했어요.', 'Failed to issue coupon.'],
+  'choose_drink': ['음료를 선택하세요', 'Choose a drink'],
+  'choose_drink_sub': ['쿠폰으로 받을 더벤티 음료 1종을 골라주세요.', 'Pick one drink to receive.'],
+  'sold_out': ['품절', 'Sold out'],
+  'remaining_n': ['{n}개 남음', '{n} left'],
+  'reward_store': ['더벤티 역곡북부역점 · 매장 사용', 'The Venti Yeokgok N. · in-store only'],
+  'issued_at': ['발급', 'Issued'],
+  'used_at': ['사용', 'Used'],
+  'coupon_used_badge': ['사용완료', 'Used'],
+  'use_coupon': ['사용하기', 'Use'],
+  'redeem_title': ['직원 확인', 'Staff verification'],
+  'redeem_desc': [
+    '매장 직원이 사용완료 코드(4자리)를 입력하면 쿠폰이 사용 처리됩니다.',
+    'Store staff enters the 4-digit code to redeem this coupon.'
+  ],
+  'redeem_confirm': ['사용 처리', 'Redeem'],
+  'redeem_success': ['쿠폰이 사용 처리됐어요.', 'Coupon redeemed.'],
+  'redeem_bad_code': ['코드가 올바르지 않아요.', 'Incorrect code.'],
+  'reward_ready_title': ['리워드를 받을 수 있어요! 🎉', 'Reward available! 🎉'],
+  'reward_ready_body': [
+    '{n}일 연속 출석 달성! 아래 리워드에서 음료 쿠폰을 받아보세요.',
+    "{n}-day streak! Claim your drink coupon in the reward section below."
+  ],
   'quick_actions': ['빠른 실행', 'Quick actions'],
   'calendar_title': ['통합 일정', 'Calendar'],
   'open_calendar': ['통합 일정 보기', 'Open calendar'],
@@ -219,6 +259,22 @@ const Map<String, List<String>> _dict = {
   'admin_nav_attendance': ['출석', 'Attendance'],
   'admin_nav_manage': ['관리자', 'Admins'],
   'admin_nav_groups': ['그룹', 'Groups'],
+  'admin_nav_reward': ['리워드', 'Reward'],
+  // 관리자 리워드 화면
+  'reward_admin_title': ['리워드 관리', 'Reward management'],
+  'redeem_code_section': ['사용완료 코드 (4자리)', 'Redeem code (4-digit)'],
+  'redeem_code_hint': [
+    '더벤티 역곡북부역점 직원이 쿠폰 사용 시 입력하는 코드입니다.',
+    'Code the store staff enters to redeem coupons.'
+  ],
+  'code_must_be_4': ['코드는 4자리 숫자여야 합니다.', 'Code must be 4 digits.'],
+  'code_saved': ['코드를 저장했습니다.', 'Code saved.'],
+  'reward_stock_section': ['음료 재고', 'Drink stock'],
+  'stock_count': ['수량', 'Count'],
+  'issued_coupons': ['발급 쿠폰', 'Issued coupons'],
+  'coupon_stats': ['발급 {issued} · 사용 {used}', 'Issued {issued} · Used {used}'],
+  'no_coupons': ['아직 발급된 쿠폰이 없습니다.', 'No coupons issued yet.'],
+  'coupon_active_badge': ['사용가능', 'Active'],
   'groups_title': ['그룹 관리', 'Groups'],
   'create_group': ['그룹 만들기', 'Create group'],
   'group_name': ['그룹(멘토) 이름', 'Group (mentor) name'],
@@ -313,7 +369,7 @@ const Map<String, List<String>> _dict = {
   'streak_days': ['{n}일', '{n} day(s)'],
   'streak_encourage': ['꾸준함이 쌓이고 있어요.', 'Your consistency is building up.'],
   'attend_reward': ['출석 리워드', 'Attendance reward'],
-  'coffee_gifticon': ['커피 기프티콘', 'Coffee gifticon'],
+  'coffee_gifticon': ['더벤티 음료 쿠폰', 'The Venti drink coupon'],
   'reward_condition': ['{n}일 연속 출석 시 지급', 'Given after a {n}-day streak'],
   'check_in_today': ['오늘 출석하기', 'Check in today'],
   'not_attendance_day': ['오늘은 출석일이 아닙니다', 'Not an attendance day'],
@@ -361,10 +417,10 @@ const Map<String, List<String>> _dict = {
   'attendance_error': ['출석 정보를 불러오지 못했습니다.', 'Failed to load attendance.'],
   'attendance_appbar': ['출석 체크', 'Check In'],
   'checkin_success': ['출석 완료! 연속 {n}일째 🎉', 'Checked in! {n}-day streak 🎉'],
-  'coffee_achieved_title': ['커피 보상 달성!', 'Coffee reward unlocked!'],
+  'coffee_achieved_title': ['리워드 달성!', 'Reward unlocked!'],
   'coffee_achieved_body': [
-    '{n}일 연속 출석을 달성했어요!\n학과 사무실에서 커피 기프티콘을 받아가세요.',
-    "You've reached a {n}-day streak!\nPick up your coffee gifticon at the department office."
+    '{n}일 연속 출석을 달성했어요!\n출석 화면 리워드에서 음료 쿠폰을 받아보세요.',
+    "You've reached a {n}-day streak!\nClaim your drink coupon in the reward section."
   ],
   'ok_great': ['좋아요!', 'Great!'],
   'streak_now': ['현재 {n}일 연속 출석 중!', "You're on a {n}-day streak!"],
@@ -372,16 +428,16 @@ const Map<String, List<String>> _dict = {
   'total_days': ['누적 출석 {n}일', '{n} days total'],
   'day_n': ['{n}일', 'Day {n}'],
   'attended_day': ['출석한 날', 'Attended'],
-  'coffee_goal': ['커피 기프티콘 목표', 'Coffee gifticon goal'],
+  'coffee_goal': ['음료 리워드 목표', 'Drink reward goal'],
   'count_of': ['{c}/{t}회', '{c}/{t}'],
-  'coffee_ready': ['🎉 학과 사무실에서 커피를 수령하세요!',
-      '🎉 Pick up your coffee at the department office!'],
-  'coffee_hint': ['{goal}회 연속 출석 시 학과회비로 제공 ({n}일 남음)',
-      'Given after a {goal}-day streak, funded by dept. dues ({n} left)'],
+  'coffee_ready': ['🎉 아래 리워드에서 음료 쿠폰을 받으세요!',
+      '🎉 Claim your drink coupon in the reward section below!'],
+  'coffee_hint': ['{goal}회 연속 출석 시 음료 쿠폰 지급 ({n}일 남음)',
+      'Given after a {goal}-day streak ({n} left)'],
   'checked_done': ['오늘 출석 완료  ☕', "Checked in today  ☕"],
   'attendance_note': [
-    '연속 출석이 끊기면 다시 1일부터 시작됩니다. 보상 커피는 학과회비로 제공되며 학과 사무실에서 수령할 수 있습니다.',
-    'If your streak breaks, it restarts from day 1. The reward coffee is funded by department dues and can be picked up at the department office.'
+    '연속 출석이 끊기면 다시 1일부터 시작됩니다. 리워드 음료 쿠폰은 더벤티 역곡북부역점에서 사용할 수 있습니다.',
+    'If your streak breaks, it restarts from day 1. Drink coupons can be used at The Venti Yeokgok North branch.'
   ],
 };
 

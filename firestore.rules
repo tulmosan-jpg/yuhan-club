@@ -85,6 +85,24 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // ── 리워드 설정/재고 ──
+    // 읽기: 로그인 사용자(재고·코드 확인). 쓰기: 관리자만(코드/재고 수정).
+    //  · 재고 차감은 claimCoupon Cloud Function(관리자 SDK)이 수행 → 규칙 우회.
+    match /config/{doc} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // ── 리워드 쿠폰 ──
+    // 읽기: 본인 또는 관리자.
+    // 쓰기: 클라이언트 금지 — 발급/사용은 claimCoupon·redeemCoupon
+    //       Cloud Function(관리자 SDK)에서만 처리(위조·재고조작 방지).
+    match /coupons/{id} {
+      allow read: if isAdmin()
+        || (request.auth != null && request.auth.uid == resource.data.userId);
+      allow write: if false;
+    }
+
     // ── 동아리 보고서 ──
     // 열람: 작성자 본인, 관리자, 또는 같은 그룹 멤버(그룹 지정된 경우).
     // 생성: authorId=본인 강제. 수정: 본인만(authorId 불변). 삭제: 본인 또는 관리자.

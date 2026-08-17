@@ -7,12 +7,16 @@ import '../../app/theme.dart';
 import '../../data/repository.dart';
 import '../../data/attendance_logic.dart';
 import '../../l10n/app_strings.dart';
+import '../rewards/reward_section.dart';
 import '../../models/attendance.dart';
 import '../../models/group.dart';
 
 /// 그룹별 출석 화면. 내 그룹의 출석일에만 출석 가능.
 class AttendanceScreen extends StatefulWidget {
-  const AttendanceScreen({super.key});
+  const AttendanceScreen({super.key, this.rewardScroll});
+
+  /// 홈에서 리워드 노드를 누르면 값이 바뀌며 리워드 섹션으로 스크롤한다.
+  final ValueNotifier<int>? rewardScroll;
 
   @override
   State<AttendanceScreen> createState() => _AttendanceScreenState();
@@ -28,10 +32,32 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   String? _gid;
   bool _loadingGroups = true;
 
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     _loadGroups();
+    widget.rewardScroll?.addListener(_scrollToReward);
+  }
+
+  @override
+  void dispose() {
+    widget.rewardScroll?.removeListener(_scrollToReward);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// 리워드 섹션(페이지 하단부)으로 바로 스크롤(첫 프레임 이후).
+  void _scrollToReward() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOut,
+      );
+    });
   }
 
   Future<void> _loadGroups() async {
@@ -180,10 +206,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        icon: const Text('☕', style: TextStyle(fontSize: 40)),
-        title: Text(tr(context, 'coffee_achieved_title')),
-        content: Text(tr(context, 'coffee_achieved_body',
-            {'n': '${AttendanceLogic.coffeeStreak}'})),
+        icon: const Text('🎉', style: TextStyle(fontSize: 40)),
+        title: Text(tr(context, 'reward_ready_title'),
+            style: const TextStyle(
+                fontFamily: 'Pretendard', fontWeight: FontWeight.bold)),
+        content: Text(tr(context, 'reward_ready_body',
+            {'n': '${AttendanceLogic.coffeeStreak}'}),
+            style: const TextStyle(fontFamily: 'Pretendard')),
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(context),
@@ -247,6 +276,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           return RefreshIndicator(
             onRefresh: () async => setState(_reload),
             child: ListView(
+              controller: _scrollController,
               padding: const EdgeInsets.all(16),
               children: [
                 if (_groups.length > 1) ...[
@@ -275,8 +305,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 const SizedBox(height: 16),
                 _CalendarCard(summary: s, scheduled: _dates),
                 const SizedBox(height: 16),
-                _ProgressCard(summary: s, tiers: tiers),
-                const SizedBox(height: 16),
                 _CheckInButton(
                   checkedIn: s.checkedInToday,
                   loading: _checking,
@@ -286,6 +314,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       : DateFormat('M/d (E)', 'ko').format(_nextScheduled!),
                   onTap: _checkIn,
                 ),
+                const SizedBox(height: 16),
+                _ProgressCard(summary: s, tiers: tiers),
+                const SizedBox(height: 16),
+                RewardSection(summary: s),
                 const SizedBox(height: 24),
                 _InfoNote(),
               ],

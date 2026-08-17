@@ -2,6 +2,7 @@ import '../models/report.dart';
 import '../models/activity.dart';
 import '../models/attendance.dart';
 import '../models/group.dart';
+import '../models/reward.dart';
 
 /// 앱 데이터 접근 추상화. Mock / Firebase 구현 교체 가능.
 abstract class AppRepository {
@@ -98,6 +99,34 @@ abstract class AppRepository {
 
   /// 관리자: 그룹 전체 회원의 RSVP.
   Future<List<Rsvp>> fetchGroupRsvp(String groupId);
+
+  // ── 리워드(더벤티 쿠폰) ──
+  /// 리워드 설정/재고(사용코드 + 종목별 남은 수량).
+  Future<RewardConfig> fetchRewardConfig();
+
+  /// 관리자: 사용완료 코드(4자리) 설정.
+  Future<void> setRewardCode(String code);
+
+  /// 관리자: 종목별 재고 설정.
+  Future<void> setDrinkStock(String drinkId, int count);
+
+  /// 회원: 내 쿠폰 목록(최신순).
+  Future<List<Coupon>> fetchMyCoupons();
+
+  /// 관리자: 전체 발급 쿠폰.
+  Future<List<Coupon>> fetchAllCoupons();
+
+  /// 회원: 지금까지 지급받을 자격이 있는 쿠폰 수(스트릭 2회당 1개)에서
+  /// 이미 받은 수를 뺀 '지금 받을 수 있는' 개수.
+  Future<int> fetchAvailableCoupons(AttendanceSummary summary);
+
+  /// 회원: 음료를 골라 쿠폰 1개 발급(재고 차감, 자격 재확인).
+  /// 성공 시 발급된 쿠폰, 재고 소진/자격 없음이면 예외.
+  Future<Coupon> claimCoupon(String drinkId, AttendanceSummary summary);
+
+  /// 매장 직원: 코드 입력으로 쿠폰 사용 완료 처리.
+  /// 코드 불일치면 false, 성공하면 true.
+  Future<bool> redeemCoupon(String couponId, String code);
 }
 
 /// 대외활동 목록 정렬 기준.

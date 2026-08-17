@@ -12,6 +12,7 @@
  * 비용 안전장치: maxInstances 로 동시 실행 상한 → 폭주 시에도 과금 억제.
  */
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {setGlobalOptions} = require("firebase-functions/v2");
 const {logger} = require("firebase-functions");
 const admin = require("firebase-admin");
@@ -151,3 +152,143 @@ exports.onRsvpCreated = onDocumentCreated(
       );
     },
 );
+
+// ══ 리워드(더벤티 쿠폰) — 서버에서 자격/재고 검증 ══════════════════
+
+const COFFEE_STREAK = 2; // 연속 출석 2회당 쿠폰 1개
+const DRINK_NAMES = {
+  peach: "제로 복숭아 아이스티",
+  plum: "제로 매실 아이스티",
+  americano: "아이스 아메리카노",
+};
+
+/** 'yyyy-MM-dd' (KST 기준 날짜 키). */
+function dayKey(d) {
+  const kst = new Date(d.getTime() + 9 * 3600 * 1000);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(kst.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** 예정일 기준 연속 출석(스케줄 최신순으로 훑어 결석에서 멈춤). */
+function streakFromSchedule(scheduleKeys, attendedKeys, todayKey) {
+  const attended = new Set(attendedKeys);
+  const checkedInToday = attended.has(todayKey);
+  const past = [...new Set(scheduleKeys)]
+      .filter((k) => k <= todayKey && !(k === todayKey && !checkedInToday))
+      .sort()
+      .reverse();
+  let streak = 0;
+  for (const k of past) {
+    if (attended.has(k)) streak++;
+    else break;
+  }
+  return streak;
+}
+
+/** 사용자의 첫 그룹 기준 신뢰 스트릭을 서버 데이터로 재계산. */
+async function trustedStreak(uid) {
+  // 내가 속한 첫 그룹 찾기.
+  const groupsSnap = await db.collection("groups").get();
+  let gid = null;
+  for (const g of groupsSnap.docs) {
+    const m = await db.collection("groups").doc(g.id)
+        .collection("members").doc(uid).get();
+    if (m.exists) {
+      gid = g.id;
+      break;
+    }
+  }
+  const todayKey = dayKey(new Date());
+  if (!gid) return 0;
+  const [datesSnap, ciSnap] = await Promise.all([
+    db.collection("groups").doc(gid).collection("attendance_dates").get(),
+    db.collection("groups").doc(gid).collection("attendance").doc(uid)
+        .collection("checkins").get(),
+  ]);
+  const scheduleKeys = datesSnap.docs
+      .map((d) => (d.data().date ? dayKey(d.data().date.toDate()) : null))
+      .filter(Boolean);
+  const attendedKeys = ciSnap.docs
+      .map((d) => (d.data().date ? dayKey(d.data().date.toDate()) : null))
+      .filter(Boolean);
+  return streakFromSchedule(scheduleKeys, attendedKeys, todayKey);
+}
+
+// ── 쿠폰 발급(자격 재확인 + 재고 차감, 원자적) ──
+exports.claimCoupon = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  const drinkId = request.data && request.data.drinkId;
+  if (!DRINK_NAMES[drinkId]) {
+    throw new HttpsError("invalid-argument", "잘못된 음료입니다.");
+  }
+
+  const streak = await trustedStreak(uid);
+  const earned = Math.floor(streak / COFFEE_STREAK);
+
+  const userRef = db.collection("users").doc(uid);
+  const cfgRef = db.collection("config").doc("rewards");
+  const couponRef = db.collection("coupons").doc();
+
+  await db.runTransaction(async (tx) => {
+    const [userSnap, cfgSnap] = await Promise.all([
+      tx.get(userRef), tx.get(cfgRef),
+    ]);
+    const u = userSnap.data() || {};
+    const rewardUnits = u.rewardUnits || 0;
+    const snapStreak = u.rewardStreakSnapshot || 0;
+    const claimed = streak >= snapStreak ? rewardUnits : 0;
+    if (earned - claimed < 1) {
+      throw new HttpsError("failed-precondition", "받을 수 있는 리워드가 없습니다.");
+    }
+    const cfg = cfgSnap.data() || {};
+    const stock = cfg.stock || {};
+    const remaining = typeof stock[drinkId] === "number" ? stock[drinkId] : 0;
+    if (remaining <= 0) {
+      throw new HttpsError("resource-exhausted", "해당 음료 재고가 소진됐습니다.");
+    }
+    const newStock = Object.assign({}, stock);
+    newStock[drinkId] = remaining - 1;
+    tx.set(cfgRef, {stock: newStock}, {merge: true});
+    tx.set(couponRef, {
+      userId: uid,
+      userName: u.name || (request.auth.token && request.auth.token.name) || "회원",
+      drinkId,
+      drinkName: DRINK_NAMES[drinkId],
+      issuedAt: admin.firestore.FieldValue.serverTimestamp(),
+      used: false,
+    });
+    tx.set(userRef, {
+      rewardUnits: claimed + 1,
+      rewardStreakSnapshot: streak,
+    }, {merge: true});
+  });
+
+  return {couponId: couponRef.id, drinkId, drinkName: DRINK_NAMES[drinkId]};
+});
+
+// ── 쿠폰 사용 처리(직원 코드 검증) ──
+exports.redeemCoupon = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  const {couponId, code} = request.data || {};
+  if (!couponId || !code) {
+    throw new HttpsError("invalid-argument", "쿠폰/코드가 필요합니다.");
+  }
+  const cfgSnap = await db.collection("config").doc("rewards").get();
+  const cfgCode = (cfgSnap.data() || {}).code || "";
+  if (!cfgCode || String(cfgCode) !== String(code).trim()) {
+    return {ok: false, reason: "bad_code"};
+  }
+  const ref = db.collection("coupons").doc(couponId);
+  const snap = await ref.get();
+  if (!snap.exists) return {ok: false, reason: "not_found"};
+  if (snap.data().used === true) return {ok: true, already: true};
+  await ref.set({
+    used: true,
+    usedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, {merge: true});
+  return {ok: true};
+});

@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/report.dart';
 import '../models/activity.dart';
 import '../models/attendance.dart';
 import '../models/group.dart';
+import '../models/reward.dart';
 import 'repository.dart';
 import 'attendance_logic.dart';
 
@@ -23,6 +25,7 @@ class FirebaseRepository implements AppRepository {
 
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
 
   /// 로그인된 사용자 uid/이름을 동적으로 읽는다(Auth 연동).
   @override
@@ -451,4 +454,107 @@ class FirebaseRepository implements AppRepository {
     });
     return result;
   }
+
+  // ── 리워드(더벤티 쿠폰) ──
+  DocumentReference<Map<String, dynamic>> get _rewardConfigDoc =>
+      _db.collection('config').doc('rewards');
+  CollectionReference<Map<String, dynamic>> get _couponsCol =>
+      _db.collection('coupons');
+
+  RewardConfig _configFromData(Map<String, dynamic>? data) {
+    final rawStock = (data?['stock'] as Map<String, dynamic>?) ?? {};
+    final stock = <String, int>{};
+    for (final d in kDrinks) {
+      stock[d.id] = (rawStock[d.id] as num?)?.toInt() ??
+          RewardConfig.defaultStock[d.id] ??
+          0;
+    }
+    return RewardConfig(code: (data?['code'] as String?) ?? '', stock: stock);
+  }
+
+  @override
+  Future<RewardConfig> fetchRewardConfig() async {
+    final snap = await _rewardConfigDoc.get();
+    return _configFromData(snap.data());
+  }
+
+  @override
+  Future<void> setRewardCode(String code) async {
+    await _rewardConfigDoc.set({'code': code.trim()}, SetOptions(merge: true));
+  }
+
+  @override
+  Future<void> setDrinkStock(String drinkId, int count) async {
+    await _rewardConfigDoc.set({
+      'stock': {drinkId: count < 0 ? 0 : count}
+    }, SetOptions(merge: true));
+  }
+
+  Coupon _couponFromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data()!;
+    return Coupon(
+      id: d.id,
+      userId: (m['userId'] as String?) ?? '',
+      userName: (m['userName'] as String?) ?? '',
+      drinkId: (m['drinkId'] as String?) ?? '',
+      drinkName: (m['drinkName'] as String?) ?? '',
+      issuedAt: (m['issuedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      used: (m['used'] as bool?) ?? false,
+      usedAt: (m['usedAt'] as Timestamp?)?.toDate(),
+    );
+  }
+
+  @override
+  Future<List<Coupon>> fetchMyCoupons() async {
+    final snap =
+        await _couponsCol.where('userId', isEqualTo: currentUserId).get();
+    final list = snap.docs.map(_couponFromDoc).toList()
+      ..sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
+    return list;
+  }
+
+  @override
+  Future<List<Coupon>> fetchAllCoupons() async {
+    final snap = await _couponsCol.get();
+    return snap.docs.map(_couponFromDoc).toList()
+      ..sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
+  }
+
+  @override
+  Future<int> fetchAvailableCoupons(AttendanceSummary summary) async {
+    final streak = summary.currentStreak;
+    final earned = streak ~/ AttendanceLogic.coffeeStreak;
+    final userSnap = await _db.collection('users').doc(currentUserId).get();
+    final data = userSnap.data() ?? {};
+    final rewardUnits = (data['rewardUnits'] as num?)?.toInt() ?? 0;
+    final snapStreak = (data['rewardStreakSnapshot'] as num?)?.toInt() ?? 0;
+    // 스트릭이 마지막 발급 시점보다 낮아졌으면 런이 끊긴 것 → 이번 런 발급 0.
+    final claimed = streak >= snapStreak ? rewardUnits : 0;
+    final available = earned - claimed;
+    return available < 0 ? 0 : available;
+  }
+
+  @override
+  Future<Coupon> claimCoupon(String drinkId, AttendanceSummary summary) async {
+    // 발급은 서버(Cloud Functions)에서 자격/재고를 검증하고 처리.
+    final callable = _functions.httpsCallable('claimCoupon');
+    try {
+      final res = await callable.call({'drinkId': drinkId});
+      final couponId = (res.data as Map)['couponId'] as String;
+      final saved = await _couponsCol.doc(couponId).get();
+      return _couponFromDoc(saved);
+    } on FirebaseFunctionsException catch (e) {
+      throw Exception(e.code); // failed-precondition / resource-exhausted 등
+    }
+  }
+
+  @override
+  Future<bool> redeemCoupon(String couponId, String code) async {
+    final callable = _functions.httpsCallable('redeemCoupon');
+    final res =
+        await callable.call({'couponId': couponId, 'code': code.trim()});
+    return (res.data as Map)['ok'] == true;
+  }
+
+  // 서버 재계산은 이제 Cloud Functions 내부에서 수행하므로 미사용.
 }

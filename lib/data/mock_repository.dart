@@ -2,6 +2,7 @@ import '../models/report.dart';
 import '../models/activity.dart';
 import '../models/attendance.dart';
 import '../models/group.dart';
+import '../models/reward.dart';
 import 'repository.dart';
 import 'attendance_logic.dart';
 
@@ -285,11 +286,18 @@ class MockRepository implements AppRepository {
   // 그룹별 출석(데모): 그룹→날짜, 그룹→내 체크인.
   final Map<String, List<DateTime>> _groupDates = {
     'g1': [
+      AttendanceRecord.dayOf(DateTime.now().subtract(const Duration(days: 7))),
       AttendanceRecord.dayOf(DateTime.now()),
       AttendanceRecord.dayOf(DateTime.now().add(const Duration(days: 7))),
     ],
   };
-  final Map<String, List<DateTime>> _groupMine = {'g1': []};
+  // 데모: 지난 예정일 + 오늘 출석(연속 2회) → 리워드 발급 가능 상태.
+  final Map<String, List<DateTime>> _groupMine = {
+    'g1': [
+      AttendanceRecord.dayOf(DateTime.now().subtract(const Duration(days: 7))),
+      AttendanceRecord.dayOf(DateTime.now()),
+    ],
+  };
   // 일정 주제: 'gid|yyyy-MM-dd' → topic (데모 시드)
   final Map<String, String> _groupTopics = {
     'g1|${AttendanceRecord.keyOf(AttendanceRecord.dayOf(DateTime.now()))}':
@@ -396,6 +404,97 @@ class MockRepository implements AppRepository {
   Future<List<Rsvp>> fetchGroupRsvp(String gid) async {
     await _delay();
     return (_rsvp[gid]?.values.toList()) ?? [];
+  }
+
+  // ── 리워드(더벤티 쿠폰) 데모 ──
+  String _rewardCode = '1234';
+  final Map<String, int> _stock = {...RewardConfig.defaultStock};
+  final List<Coupon> _coupons = [];
+  int _rewardUnits = 0;
+  int _rewardSnapStreak = 0;
+
+  @override
+  Future<RewardConfig> fetchRewardConfig() async {
+    await _delay();
+    return RewardConfig(code: _rewardCode, stock: {..._stock});
+  }
+
+  @override
+  Future<void> setRewardCode(String code) async {
+    await _delay();
+    _rewardCode = code.trim();
+  }
+
+  @override
+  Future<void> setDrinkStock(String drinkId, int count) async {
+    await _delay();
+    _stock[drinkId] = count < 0 ? 0 : count;
+  }
+
+  @override
+  Future<List<Coupon>> fetchMyCoupons() async {
+    await _delay();
+    return [..._coupons]..sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
+  }
+
+  @override
+  Future<List<Coupon>> fetchAllCoupons() async {
+    await _delay();
+    return [..._coupons]..sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
+  }
+
+  @override
+  Future<int> fetchAvailableCoupons(AttendanceSummary summary) async {
+    final earned = summary.currentStreak ~/ AttendanceLogic.coffeeStreak;
+    final claimed =
+        summary.currentStreak >= _rewardSnapStreak ? _rewardUnits : 0;
+    final a = earned - claimed;
+    return a < 0 ? 0 : a;
+  }
+
+  @override
+  Future<Coupon> claimCoupon(String drinkId, AttendanceSummary summary) async {
+    await _delay();
+    final drink = drinkById(drinkId);
+    if (drink == null) throw Exception('invalid_drink');
+    final earned = summary.currentStreak ~/ AttendanceLogic.coffeeStreak;
+    final claimed =
+        summary.currentStreak >= _rewardSnapStreak ? _rewardUnits : 0;
+    if (earned - claimed < 1) throw Exception('not_eligible');
+    if ((_stock[drinkId] ?? 0) <= 0) throw Exception('sold_out');
+    _stock[drinkId] = (_stock[drinkId] ?? 0) - 1;
+    _rewardUnits = claimed + 1;
+    _rewardSnapStreak = summary.currentStreak;
+    final c = Coupon(
+      id: 'c${_coupons.length + 1}',
+      userId: currentUserId,
+      userName: currentUserName,
+      drinkId: drink.id,
+      drinkName: drink.name,
+      issuedAt: DateTime.now(),
+    );
+    _coupons.add(c);
+    return c;
+  }
+
+  @override
+  Future<bool> redeemCoupon(String couponId, String code) async {
+    await _delay();
+    if (_rewardCode.isEmpty || _rewardCode != code.trim()) return false;
+    final i = _coupons.indexWhere((c) => c.id == couponId);
+    if (i < 0) return false;
+    final c = _coupons[i];
+    _coupons[i] = Coupon(
+      id: c.id,
+      userId: c.userId,
+      userName: c.userName,
+      drinkId: c.drinkId,
+      drinkName: c.drinkName,
+      issuedAt: c.issuedAt,
+      used: true,
+      usedAt: DateTime.now(),
+    );
+    return true;
   }
 
   Future<void> _delay() =>
