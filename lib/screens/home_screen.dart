@@ -72,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildMemberShell(BuildContext context) {
     final pages = [
       DashboardScreen(onNavigate: _goTo, onReward: _goToReward),
-      const ReportsScreen(),
+      ReportsScreen(onNeedMentor: () => _goTo(3)),
       const ActivitiesScreen(),
       AttendanceScreen(rewardScroll: _rewardScroll),
       const CertificationsScreen(),

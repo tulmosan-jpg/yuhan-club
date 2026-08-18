@@ -65,6 +65,9 @@ abstract class AppRepository {
   /// 회원: PIN으로 그룹 가입. 성공 여부 반환.
   Future<bool> joinGroup(String groupId, String pin);
 
+  /// 회원: 그룹(멘토) 탈퇴.
+  Future<void> leaveGroup(String groupId);
+
   /// 관리자: 특정 그룹의 보고서.
   Future<List<MentoringReport>> fetchGroupReports(String groupId);
 
@@ -127,6 +130,18 @@ abstract class AppRepository {
   /// 매장 직원: 코드 입력으로 쿠폰 사용 완료 처리.
   /// 코드 불일치면 false, 성공하면 true.
   Future<bool> redeemCoupon(String couponId, String code);
+
+  // ── 앱 초기화 ──
+  /// 내 서버 데이터(보고서·쿠폰·출석·멤버십·프로필/설정) 전체 삭제.
+  /// 호출 후 로그아웃을 수행한다.
+  Future<void> resetMyAccount();
+
+  // ── 관리자: 멤버 계정 찾기/비밀번호 재설정 ──
+  /// 관리자: 그룹 멤버들의 로그인 아이디(이메일) 조회.
+  Future<List<MemberAccount>> fetchGroupMemberAccounts(String groupId);
+
+  /// 관리자: 멤버의 임시 비밀번호를 발급(재설정). (email, password) 반환.
+  Future<({String email, String password})> resetMemberPassword(String uid);
 }
 
 /// 대외활동 목록 정렬 기준.

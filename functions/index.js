@@ -45,6 +45,17 @@ async function collectTokens(uids, prefKey, excludeUid) {
   return map;
 }
 
+/** 호출자가 관리자(admins/{uid} 존재)인지 확인, 아니면 예외. */
+async function assertAdmin(request) {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  const snap = await db.collection("admins").doc(uid).get();
+  if (!snap.exists) {
+    throw new HttpsError("permission-denied", "관리자만 사용할 수 있습니다.");
+  }
+  return uid;
+}
+
 /** admins 컬렉션의 uid 목록. */
 async function adminUids() {
   const snap = await db.collection("admins").get();
@@ -267,6 +278,90 @@ exports.claimCoupon = onCall(async (request) => {
   });
 
   return {couponId: couponRef.id, drinkId, drinkName: DRINK_NAMES[drinkId]};
+});
+
+// ── 앱 초기화: 내 서버 데이터 전체 삭제 ──────────────────────────
+// 로그아웃 전에 호출. 보고서·쿠폰·출석 체크인·RSVP·그룹 멤버십·프로필/설정을
+// 모두 삭제한다. (체크인/쿠폰은 클라이언트가 지울 수 없으므로 서버에서 처리)
+exports.resetMyAccount = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+
+  // 1) 내가 쓴 보고서 삭제(하위 포함).
+  const reports = await db.collection("reports")
+      .where("authorId", "==", uid).get();
+  await Promise.all(reports.docs.map((d) => db.recursiveDelete(d.ref)));
+
+  // 2) 내 쿠폰 삭제.
+  const coupons = await db.collection("coupons")
+      .where("userId", "==", uid).get();
+  await Promise.all(coupons.docs.map((d) => d.ref.delete()));
+
+  // 3) 전역 출석 기록 삭제.
+  await db.recursiveDelete(db.collection("attendance").doc(uid));
+
+  // 4) 모든 그룹에서 멤버십 + 출석 체크인/RSVP 삭제.
+  const groups = await db.collection("groups").get();
+  await Promise.all(groups.docs.flatMap((g) => {
+    const gref = db.collection("groups").doc(g.id);
+    return [
+      gref.collection("members").doc(uid).delete().catch(() => {}),
+      db.recursiveDelete(gref.collection("attendance").doc(uid)),
+    ];
+  }));
+
+  // 5) 사용자 문서(프로필/설정/리워드/토큰/그룹) 삭제.
+  await db.recursiveDelete(db.collection("users").doc(uid));
+
+  logger.info("account reset", {uid});
+  return {ok: true};
+});
+
+// ══ 관리자: 멤버 계정(아이디) 조회 + 비밀번호 재설정 ══════════════
+
+/** 관리자: 그룹 멤버들의 로그인 이메일(아이디)을 조회. */
+exports.getGroupMemberAccounts = onCall(async (request) => {
+  await assertAdmin(request);
+  const gid = request.data && request.data.gid;
+  if (!gid) throw new HttpsError("invalid-argument", "그룹이 필요합니다.");
+  const members = await db.collection("groups").doc(gid)
+      .collection("members").get();
+  const entries = members.docs.map((m) => ({
+    uid: m.id, name: (m.data().name) || "회원",
+  }));
+  if (entries.length === 0) return {members: []};
+  // Auth 에서 이메일 조회(최대 100명씩).
+  const ident = entries.map((e) => ({uid: e.uid}));
+  const result = await admin.auth().getUsers(ident);
+  const emailByUid = {};
+  for (const u of result.users) emailByUid[u.uid] = u.email || "";
+  return {
+    members: entries.map((e) => ({
+      uid: e.uid, name: e.name, email: emailByUid[e.uid] || "",
+    })),
+  };
+});
+
+/** 관리자: 멤버의 임시 비밀번호를 발급(재설정). 원문을 반환해 전달용으로 사용. */
+exports.resetMemberPassword = onCall(async (request) => {
+  await assertAdmin(request);
+  const targetUid = request.data && request.data.uid;
+  if (!targetUid) throw new HttpsError("invalid-argument", "대상이 필요합니다.");
+  // 읽기 쉬운 임시 비밀번호 생성(혼동 문자 제외).
+  const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+  let pw = "yh";
+  for (let i = 0; i < 6; i++) {
+    // Math.random 사용 가능(함수 런타임).
+    pw += chars[Math.floor(Math.random() * chars.length)];
+  }
+  await admin.auth().updateUser(targetUid, {password: pw});
+  let email = "";
+  try {
+    const u = await admin.auth().getUser(targetUid);
+    email = u.email || "";
+  } catch (_) {}
+  logger.info("member password reset", {targetUid});
+  return {password: pw, email};
 });
 
 // ── 쿠폰 사용 처리(직원 코드 검증) ──

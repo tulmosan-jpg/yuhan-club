@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/app_config.dart';
 import '../../app/theme.dart';
@@ -52,15 +53,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<_DashboardData> _load() async {
     final repo = context.read<AppRepository>();
+    // 그룹과 무관한 조회는 먼저 시작해 겹쳐 로딩(지연 감소).
+    final activitiesF = repo.fetchActivities();
+    final reportsF = repo.fetchReports();
     // 출석은 그룹별. 내 첫 그룹의 출석을 홈 스트릭에 반영.
     final myGroups = await repo.fetchMyGroups();
-    final results = await Future.wait([
-      myGroups.isEmpty
-          ? repo.fetchAttendance()
-          : repo.fetchMyGroupAttendance(myGroups.first.id),
-      repo.fetchActivities(),
-      repo.fetchReports(),
-    ]);
+    final attendanceF = myGroups.isEmpty
+        ? repo.fetchAttendance()
+        : repo.fetchMyGroupAttendance(myGroups.first.id);
+
     // 요약용: 다음 출석일(+주제) + 미응답(RSVP) 개수.
     DateTime? nextDate;
     String? nextTopic;
@@ -93,9 +94,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
     return _DashboardData(
-      attendance: results[0] as AttendanceSummary,
-      activities: results[1] as List<Activity>,
-      reports: results[2] as List<MentoringReport>,
+      attendance: await attendanceF,
+      activities: await activitiesF,
+      reports: await reportsF,
       groupName: groupName,
       nextDate: nextDate,
       nextTopic: nextTopic,
@@ -249,6 +250,55 @@ class _GreetingState extends State<_Greeting> {
     if (!AppConfig.useMock) await _profile.remove();
   }
 
+  /// 앱 초기화: 내 서버 데이터 삭제 + 멘토 탈퇴 + 로컬 설정 초기화 + 로그아웃.
+  Future<void> _resetApp() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        icon: const Icon(Icons.warning_amber_rounded,
+            color: Color(0xFFE53E3E), size: 36),
+        title: Text(tr(dctx, 'reset_app'),
+            style: const TextStyle(
+                fontFamily: 'Pretendard', fontWeight: FontWeight.bold)),
+        content: Text(tr(dctx, 'reset_app_warn'),
+            style: const TextStyle(fontFamily: 'Pretendard', height: 1.5)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dctx, false),
+              child: Text(tr(dctx, 'cancel'))),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFE53E3E)),
+            onPressed: () => Navigator.pop(dctx, true),
+            child: Text(tr(dctx, 'reset_confirm')),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await context.read<AppRepository>().resetMyAccount();
+      if (!AppConfig.useMock) {
+        final p = await SharedPreferences.getInstance();
+        await p.clear();
+        await NotificationService.instance.cancelAll();
+        if (!mounted) return;
+        await context.read<AuthService>().signOut(); // AuthGate → 로그인 화면
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(tr(context, 'reset_done'))));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(tr(context, 'reset_failed'))));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -295,6 +345,8 @@ class _GreetingState extends State<_Greeting> {
               if (!AppConfig.useMock) {
                 await context.read<AuthService>().signOut();
               }
+            } else if (v == 'reset') {
+              await _resetApp();
             }
           },
           itemBuilder: (context) => [
@@ -352,6 +404,19 @@ class _GreetingState extends State<_Greeting> {
                   const Icon(Icons.logout, size: 18),
                   const SizedBox(width: 8),
                   Text(tr(context, 'logout')),
+                ],
+              ),
+            ),
+            const PopupMenuDivider(),
+            PopupMenuItem(
+              value: 'reset',
+              child: Row(
+                children: [
+                  const Icon(Icons.restart_alt,
+                      size: 18, color: Color(0xFFE53E3E)),
+                  const SizedBox(width: 8),
+                  Text(tr(context, 'reset_app'),
+                      style: const TextStyle(color: Color(0xFFE53E3E))),
                 ],
               ),
             ),
@@ -499,19 +564,13 @@ class _StreakTrack extends StatelessWidget {
   Widget build(BuildContext context) {
     final trackDays = AttendanceLogic.streakTrackDays;
     final rewardIndex = AttendanceLogic.coffeeStreak - 1;
-    final labels = [
-      tr(context, 'wd_mon'),
-      tr(context, 'wd_tue'),
-      tr(context, 'wd_wed'),
-      tr(context, 'wd_thu'),
-      tr(context, 'wd_fri'),
-    ];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(trackDays, (i) {
         final done = i < streak;
         final isReward = i == rewardIndex;
-        final label = i < labels.length ? labels[i] : '${i + 1}';
+        // 요일 대신 '1일 2일 3일…'(출석 섹션과 동일).
+        final label = tr(context, 'day_n', {'n': '${i + 1}'});
         final node = Column(
           children: [
             Container(

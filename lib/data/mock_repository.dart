@@ -231,7 +231,8 @@ class MockRepository implements AppRepository {
     const Group(id: 'g1', name: '홍길동 멘토팀', pin: '1234', memberCount: 3),
     const Group(id: 'g2', name: '김영양 멘토팀', pin: '5678', memberCount: 2),
   ];
-  final Set<String> _myGroupIds = {'g1'};
+  // 데모: 미가입 상태로 시작 → 출석 탭에서 멘토 선택 후 가입(pin 1234/5678).
+  final Set<String> _myGroupIds = {};
 
   @override
   Future<String> createGroup(String name, String pin) async {
@@ -275,6 +276,13 @@ class MockRepository implements AppRepository {
     if (g.isEmpty || g.first.pin != pin.trim()) return false;
     _myGroupIds.add(groupId);
     return true;
+  }
+
+  @override
+  Future<void> leaveGroup(String groupId) async {
+    await _delay();
+    _myGroupIds.remove(groupId);
+    _groupMine.remove(groupId);
   }
 
   @override
@@ -495,6 +503,34 @@ class MockRepository implements AppRepository {
       usedAt: DateTime.now(),
     );
     return true;
+  }
+
+  @override
+  Future<List<MemberAccount>> fetchGroupMemberAccounts(String gid) async {
+    await _delay();
+    return const [
+      MemberAccount(uid: 'u1', name: '김멘티', email: 'mentee1@yuhan.ac.kr'),
+      MemberAccount(uid: 'u2', name: '이멘티', email: 'mentee2@yuhan.ac.kr'),
+    ];
+  }
+
+  @override
+  Future<({String email, String password})> resetMemberPassword(
+      String uid) async {
+    await _delay();
+    return (email: 'mentee@yuhan.ac.kr', password: 'yhabc123');
+  }
+
+  @override
+  Future<void> resetMyAccount() async {
+    await _delay();
+    _reports.clear();
+    _coupons.clear();
+    _myGroupIds.clear();
+    _groupMine.clear();
+    _attendanceDays.clear();
+    _rewardUnits = 0;
+    _rewardSnapStreak = 0;
   }
 
   Future<void> _delay() =>

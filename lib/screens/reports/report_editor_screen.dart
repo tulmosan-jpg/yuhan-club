@@ -1,20 +1,21 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/image_util.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
-import '../../models/group.dart';
 import '../../models/report.dart';
 
 /// 보고서 작성/수정 화면. 임시저장 또는 제출.
 class ReportEditorScreen extends StatefulWidget {
-  const ReportEditorScreen({super.key, this.existing});
+  const ReportEditorScreen({super.key, this.existing, this.groupId});
   final MentoringReport? existing;
+
+  /// 작성자의 멘토(그룹) id. 호출부에서 넘겨 재조회를 없앤다.
+  final String? groupId;
 
   @override
   State<ReportEditorScreen> createState() => _ReportEditorScreenState();
@@ -33,10 +34,8 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
   bool _saving = false;
   bool _addingPhoto = false;
 
-  List<GroupInfo> _allGroups = []; // 전체 멘토 그룹
-  Set<String> _joinedIds = {}; // 내가 가입한 그룹
-  bool _groupsLoading = true;
-  String? _groupId; // 선택된 그룹
+  // 멘토(그룹)는 출석 탭에서 미리 선택 → 여기선 내 멘토를 자동 사용.
+  String? _groupId; // 내 멘토(그룹)
 
   static const int _maxPhotos = 4;
 
@@ -55,79 +54,8 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
     _date = e?.activityDate ?? DateTime.now();
     _time = TimeOfDay.fromDateTime(e?.activityDate ?? DateTime.now());
     if (e != null) _photos.addAll(e.photos);
-    _groupId = e?.groupId;
-    _loadGroups();
-  }
-
-  Future<void> _loadGroups() async {
-    final repo = context.read<AppRepository>();
-    // 1) 전체 그룹 목록 먼저 로드 → 로딩 종료(드롭다운 표시).
-    try {
-      final all = await repo.fetchGroupIndex();
-      if (mounted) {
-        setState(() {
-          _allGroups = all;
-          _groupsLoading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _groupsLoading = false);
-    }
-    // 2) 내 가입 그룹은 별도로(실패해도 무방).
-    try {
-      final mine = await repo.fetchMyGroups();
-      if (mounted) {
-        setState(() {
-          _joinedIds = mine.map((g) => g.id).toSet();
-          if (_groupId == null && mine.length == 1) _groupId = mine.first.id;
-        });
-      }
-    } catch (_) {}
-  }
-
-  /// 드롭다운에서 그룹 선택. 미가입이면 PIN 입력받아 참여.
-  Future<void> _selectGroup(String gid) async {
-    if (_joinedIds.contains(gid)) {
-      setState(() => _groupId = gid);
-      return;
-    }
-    final pinCtrl = TextEditingController();
-    final entered = await showDialog<String>(
-      context: context,
-      builder: (dctx) => AlertDialog(
-        title: Text(tr(context, 'enter_pin')),
-        content: TextField(
-          controller: pinCtrl,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          maxLength: 4,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: InputDecoration(labelText: tr(context, 'group_pin')),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dctx),
-              child: Text(tr(context, 'cancel'))),
-          FilledButton(
-              onPressed: () => Navigator.pop(dctx, pinCtrl.text),
-              child: Text(tr(context, 'join_group'))),
-        ],
-      ),
-    );
-    if (entered == null || !mounted) return;
-    final ok = await context.read<AppRepository>().joinGroup(gid, entered);
-    if (!mounted) return;
-    if (ok) {
-      setState(() {
-        _joinedIds.add(gid);
-        _groupId = gid;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr(context, 'join_success'))));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr(context, 'join_failed'))));
-    }
+    // 멘토(그룹)는 호출부에서 전달받아 사용(재조회 없음).
+    _groupId = e?.groupId ?? widget.groupId;
   }
 
   Future<void> _addPhoto() async {
@@ -260,53 +188,7 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
                   setState(() => _role = s.isEmpty ? null : s.first),
             ),
             const SizedBox(height: 16),
-
-            // ── 그룹(멘토) 선택 ── 미가입 그룹은 선택 시 PIN 입력.
-            Text(tr(context, 'select_mentor'),
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            if (_groupsLoading)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_allGroups.isEmpty)
-              Text(tr(context, 'no_groups'),
-                  style: TextStyle(color: Colors.grey.shade500))
-            else
-              DropdownButtonFormField<String>(
-                key: ValueKey(_groupId), // 값 변경 시 표시 갱신
-                initialValue:
-                    _allGroups.any((g) => g.id == _groupId) ? _groupId : null,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: tr(context, 'select_group'),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                items: _allGroups
-                    .map((g) => DropdownMenuItem(
-                          value: g.id,
-                          child: Row(
-                            children: [
-                              Flexible(
-                                  child: Text(g.name,
-                                      overflow: TextOverflow.ellipsis)),
-                              if (!_joinedIds.contains(g.id)) ...[
-                                const SizedBox(width: 6),
-                                const Icon(Icons.lock_outline,
-                                    size: 14, color: Color(0xFF9CA3AF)),
-                              ],
-                            ],
-                          ),
-                        ))
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) _selectGroup(v);
-                },
-              ),
-            const SizedBox(height: 16),
-            // 상대방 이름 칸 제거 — 그룹(멘토 팀) 선택으로 멘토가 특정됨.
+            // 멘토는 출석 탭에서 미리 선택 → 보고서에선 자동 사용(선택란 없음).
             _field(_title, tr(context, 'report_title_field'), required: true),
             Row(
               children: [

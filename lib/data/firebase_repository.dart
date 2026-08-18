@@ -231,8 +231,14 @@ class FirebaseRepository implements AppRepository {
     final userDoc = await _db.collection('users').doc(uid).get();
     final ids = (userDoc.data()?['groups'] as List?)?.cast<String>() ?? const [];
     if (ids.isEmpty) return [];
-    final index = await fetchGroupIndex();
-    return index.where((g) => ids.contains(g.id)).toList();
+    // 전체 group_index 대신 내 그룹 문서만 직접 조회(라운드트립 축소).
+    final snaps = await Future.wait(
+        ids.map((id) => _db.collection('group_index').doc(id).get()));
+    return snaps
+        .where((s) => s.exists)
+        .map((s) => GroupInfo(id: s.id, name: (s.data()?['name'] as String?) ?? ''))
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
   }
 
   @override
@@ -261,6 +267,21 @@ class FirebaseRepository implements AppRepository {
       if (e.code == 'permission-denied') return false;
       rethrow;
     }
+  }
+
+  @override
+  Future<void> leaveGroup(String groupId) async {
+    final uid = currentUserId;
+    if (uid.isEmpty) return;
+    await _db
+        .collection('groups')
+        .doc(groupId)
+        .collection('members')
+        .doc(uid)
+        .delete();
+    await _db.collection('users').doc(uid).set({
+      'groups': FieldValue.arrayRemove([groupId]),
+    }, SetOptions(merge: true));
   }
 
   @override
@@ -554,6 +575,40 @@ class FirebaseRepository implements AppRepository {
     final res =
         await callable.call({'couponId': couponId, 'code': code.trim()});
     return (res.data as Map)['ok'] == true;
+  }
+
+  @override
+  Future<void> resetMyAccount() async {
+    // 서버에서 내 데이터 일괄 삭제(체크인·쿠폰 등 클라 삭제 불가분 포함).
+    await _functions.httpsCallable('resetMyAccount').call();
+  }
+
+  @override
+  Future<List<MemberAccount>> fetchGroupMemberAccounts(String gid) async {
+    final res = await _functions
+        .httpsCallable('getGroupMemberAccounts')
+        .call({'gid': gid});
+    final list = (res.data as Map)['members'] as List? ?? [];
+    return list
+        .map((m) => MemberAccount(
+              uid: (m['uid'] as String?) ?? '',
+              name: (m['name'] as String?) ?? '회원',
+              email: (m['email'] as String?) ?? '',
+            ))
+        .toList();
+  }
+
+  @override
+  Future<({String email, String password})> resetMemberPassword(
+      String uid) async {
+    final res = await _functions
+        .httpsCallable('resetMemberPassword')
+        .call({'uid': uid});
+    final m = res.data as Map;
+    return (
+      email: (m['email'] as String?) ?? '',
+      password: (m['password'] as String?) ?? '',
+    );
   }
 
   // 서버 재계산은 이제 Cloud Functions 내부에서 수행하므로 미사용.

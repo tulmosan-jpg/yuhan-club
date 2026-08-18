@@ -12,8 +12,11 @@ import 'report_editor_screen.dart';
 
 /// 동아리 보고서 화면. [adminView]=true 면 관리자 전용(전체 보고서 확인·삭제).
 class ReportsScreen extends StatefulWidget {
-  const ReportsScreen({super.key, this.adminView = false});
+  const ReportsScreen({super.key, this.adminView = false, this.onNeedMentor});
   final bool adminView;
+
+  /// 멘토 미선택 상태에서 새 보고서를 누르면 호출(멘토 선택 화면으로 이동).
+  final VoidCallback? onNeedMentor;
 
   @override
   State<ReportsScreen> createState() => _ReportsScreenState();
@@ -47,9 +50,22 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _openEditor([MentoringReport? report]) async {
+    String? groupId = report?.groupId;
+    // 새 보고서: 멘토(그룹) 미선택이면 먼저 멘토를 선택하도록 안내.
+    if (report == null && !_isAdmin) {
+      final mine = await context.read<AppRepository>().fetchMyGroups();
+      if (!mounted) return;
+      if (mine.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(tr(context, 'select_mentor_first'))));
+        widget.onNeedMentor?.call();
+        return;
+      }
+      groupId = mine.first.id;
+    }
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => ReportEditorScreen(existing: report),
+        builder: (_) => ReportEditorScreen(existing: report, groupId: groupId),
       ),
     );
     if (saved == true && mounted) setState(_reload);

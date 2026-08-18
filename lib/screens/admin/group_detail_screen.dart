@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../app/theme.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
+import 'admin_member_accounts_screen.dart';
 import '../../models/attendance.dart';
 import '../../models/report.dart';
 import 'group_reports_screen.dart';
@@ -25,6 +26,16 @@ class GroupDetailScreen extends StatelessWidget {
         appBar: AppBar(
           title: Text(groupName,
               style: const TextStyle(fontWeight: FontWeight.bold)),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.manage_accounts_outlined),
+              tooltip: tr(context, 'member_accounts'),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => AdminMemberAccountsScreen(
+                    groupId: groupId, groupName: groupName),
+              )),
+            ),
+          ],
           bottom: TabBar(tabs: [
             Tab(text: tr(context, 'admin_nav_reports')),
             Tab(text: tr(context, 'admin_nav_attendance')),

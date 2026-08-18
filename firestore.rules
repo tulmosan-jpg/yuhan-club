@@ -105,13 +105,17 @@ service cloud.firestore {
 
     // ── 동아리 보고서 ──
     // 열람: 작성자 본인, 관리자, 또는 같은 그룹 멤버(그룹 지정된 경우).
-    // 생성: authorId=본인 강제. 수정: 본인만(authorId 불변). 삭제: 본인 또는 관리자.
+    // 생성: authorId=본인 강제 + 본인이 속한 그룹(멘토)만 지정 가능
+    //       (멘토 미선택 상태에서는 보고서 작성 불가 — 서버에서 차단).
+    // 수정: 본인만(authorId 불변). 삭제: 본인 또는 관리자.
     match /reports/{id} {
       allow read: if isAdmin()
         || (request.auth != null && request.auth.uid == resource.data.authorId)
         || (resource.data.groupId != null && isGroupMember(resource.data.groupId));
       allow create: if request.auth != null
-        && request.resource.data.authorId == request.auth.uid;
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.groupId != null
+        && isGroupMember(request.resource.data.groupId);
       allow update: if request.auth != null
         && request.auth.uid == resource.data.authorId
         && request.resource.data.authorId == resource.data.authorId;

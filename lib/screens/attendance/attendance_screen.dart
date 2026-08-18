@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -228,10 +229,39 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final tiers = context.read<AppRepository>().rewardTiers;
     return Scaffold(
       appBar: AppBar(
-          title: Text(tr(context, 'attendance_appbar'),
-              style: const TextStyle(fontWeight: FontWeight.bold))),
+        title: Text(tr(context, 'attendance_appbar'),
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          if (!_loadingGroups && _groups.isNotEmpty)
+            TextButton.icon(
+              onPressed: _changeMentor,
+              icon: const Icon(Icons.swap_horiz, size: 18),
+              label: Text(tr(context, 'change_mentor')),
+            ),
+        ],
+      ),
       body: _buildBody(context, tiers),
     );
+  }
+
+  /// 멘토 변경: 멘토 목록에서 새 멘토를 고르면 기존 멘토는 자동 탈퇴.
+  Future<void> _changeMentor() async {
+    final currentIds = _groups.map((g) => g.id).toList();
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (ctx) => Scaffold(
+        appBar: AppBar(
+          title: Text(tr(ctx, 'change_mentor'),
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+        ),
+        body: _MentorPicker(
+          leaveOnJoin: currentIds,
+          onJoined: () async {
+            if (ctx.mounted) Navigator.of(ctx).pop();
+            await _loadGroups();
+          },
+        ),
+      ),
+    ));
   }
 
   Widget _buildBody(BuildContext context, List<RewardTier> tiers) {
@@ -239,21 +269,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_groups.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.groups_outlined, size: 48, color: Colors.grey.shade400),
-              const SizedBox(height: 12),
-              Text(tr(context, 'no_group_join_first'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600)),
-            ],
-          ),
-        ),
-      );
+      // 멘토(그룹) 미선택 → 멘토 목록에서 선택 + 4자리 비밀번호로 가입.
+      return _MentorPicker(onJoined: _loadGroups);
     }
     return FutureBuilder<AttendanceSummary>(
         future: _future,
@@ -325,6 +342,181 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           );
         },
       );
+  }
+}
+
+/// 멘토(그룹) 미선택 회원용: 멘토 목록에서 선택 후 4자리 비밀번호로 가입.
+class _MentorPicker extends StatefulWidget {
+  const _MentorPicker({required this.onJoined, this.leaveOnJoin = const []});
+  final Future<void> Function() onJoined;
+
+  /// 새 멘토 가입 성공 시 탈퇴할 기존 그룹들(멘토 변경용).
+  final List<String> leaveOnJoin;
+
+  @override
+  State<_MentorPicker> createState() => _MentorPickerState();
+}
+
+class _MentorPickerState extends State<_MentorPicker> {
+  late Future<List<GroupInfo>> _mentors;
+  bool _joining = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _mentors = context.read<AppRepository>().fetchGroupIndex();
+  }
+
+  Future<void> _join(GroupInfo g) async {
+    final pinCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        title: Text(g.name,
+            style: const TextStyle(
+                fontFamily: 'Pretendard', fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(tr(dctx, 'mentor_pin_desc'),
+                style: const TextStyle(fontFamily: 'Pretendard', fontSize: 13)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: pinCtrl,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              obscureText: true,
+              autofocus: true,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontFamily: 'Pretendard',
+                  fontSize: 22,
+                  letterSpacing: 8,
+                  fontWeight: FontWeight.bold),
+              decoration: const InputDecoration(
+                  counterText: '', hintText: '••••'),
+              onSubmitted: (_) => Navigator.pop(dctx, true),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dctx, false),
+              child: Text(tr(dctx, 'cancel'))),
+          FilledButton(
+            onPressed: () => Navigator.pop(dctx, true),
+            child: Text(tr(dctx, 'mentor_join')),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final pin = pinCtrl.text.trim();
+    if (pin.length != 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'mentor_pin_4'))));
+      return;
+    }
+    setState(() => _joining = true);
+    final repo = context.read<AppRepository>();
+    final success = await repo.joinGroup(g.id, pin);
+    if (success) {
+      // 멘토 변경: 새 멘토 가입 후 기존 멘토 탈퇴.
+      for (final gid in widget.leaveOnJoin) {
+        if (gid != g.id) await repo.leaveGroup(gid);
+      }
+    }
+    if (!mounted) return;
+    setState(() => _joining = false);
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(tr(context, 'mentor_joined', {'name': g.name}))));
+      await widget.onJoined();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'mentor_pin_wrong'))));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<GroupInfo>>(
+      future: _mentors,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final mentors = snap.data!;
+        return Stack(
+          children: [
+            ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                const SizedBox(height: 8),
+                Icon(Icons.diversity_3,
+                    size: 44, color: AppTheme.brand500),
+                const SizedBox(height: 12),
+                Text(tr(context, 'choose_mentor'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Text(tr(context, 'choose_mentor_sub'),
+                    textAlign: TextAlign.center,
+                    style:
+                        TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+                const SizedBox(height: 20),
+                if (mentors.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 40),
+                    child: Text(tr(context, 'no_mentors'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey.shade500)),
+                  )
+                else
+                  ...mentors.map((g) => Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0x14000000)),
+                        ),
+                        child: ListTile(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          leading: CircleAvatar(
+                            backgroundColor: AppTheme.brandTonal,
+                            child: Text(
+                                g.name.isNotEmpty
+                                    ? g.name.characters.first
+                                    : '?',
+                                style: const TextStyle(
+                                    color: AppTheme.brandOnTonal,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                          title: Text(g.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold)),
+                          subtitle: Text(tr(context, 'mentor_tap_join'),
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey.shade500)),
+                          trailing: const Icon(Icons.lock_outline, size: 18),
+                          onTap: _joining ? null : () => _join(g),
+                        ),
+                      )),
+              ],
+            ),
+            if (_joining)
+              Container(
+                color: Colors.black.withValues(alpha: 0.05),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+          ],
+        );
+      },
+    );
   }
 }
 

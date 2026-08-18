@@ -113,7 +113,7 @@ const Map<String, List<String>> _dict = {
     '{n}일 연속 출석 달성! 아래 리워드에서 음료 쿠폰을 받아보세요.',
     "{n}-day streak! Claim your drink coupon in the reward section below."
   ],
-  'quick_actions': ['빠른 실행', 'Quick actions'],
+  'quick_actions': ['바로가기', 'Shortcuts'],
   'calendar_title': ['통합 일정', 'Calendar'],
   'open_calendar': ['통합 일정 보기', 'Open calendar'],
   'cal_attendance': ['출석일', 'Session'],
@@ -297,7 +297,56 @@ const Map<String, List<String>> _dict = {
   'join_success': ['그룹에 참여했습니다.', 'Joined the group.'],
   'join_failed': ['PIN이 올바르지 않습니다.', 'Incorrect PIN.'],
   'report_group': ['그룹', 'Group'],
-  'no_group_join_first': ['먼저 그룹에 참여하세요.', 'Join a group first.'],
+  'no_group_join_first': ['먼저 출석 탭에서 멘토를 선택하세요.', 'Choose a mentor in the Attendance tab first.'],
+  // 멘토 선택(출석 화면)
+  'choose_mentor': ['멘토를 선택하세요', 'Choose your mentor'],
+  'choose_mentor_sub': [
+    '멘토가 알려준 4자리 비밀번호를 입력하면 가입됩니다.',
+    'Enter the 4-digit password your mentor gave you to join.'
+  ],
+  'no_mentors': ['등록된 멘토가 아직 없어요.', 'No mentors registered yet.'],
+  'mentor_tap_join': ['눌러서 비밀번호로 가입', 'Tap to join with password'],
+  'mentor_pin_desc': [
+    '멘토가 알려준 4자리 비밀번호를 입력하세요.',
+    'Enter the 4-digit password from your mentor.'
+  ],
+  'mentor_join': ['가입', 'Join'],
+  'mentor_pin_4': ['비밀번호는 4자리입니다.', 'Password must be 4 digits.'],
+  'mentor_joined': ['{name} 멘토에 가입했어요!', 'Joined mentor {name}!'],
+  'mentor_pin_wrong': ['비밀번호가 올바르지 않아요.', 'Incorrect password.'],
+  'change_mentor': ['멘토 변경', 'Change mentor'],
+  'select_mentor_first': ['먼저 멘토를 선택하세요.', 'Please choose a mentor first.'],
+  // 앱 초기화
+  'reset_app': ['앱 초기화', 'Reset app'],
+  'reset_app_warn': [
+    '내 보고서·출석·리워드 쿠폰·멘토 가입·프로필/설정이 모두 삭제되고 로그아웃됩니다.\n이 작업은 되돌릴 수 없어요.',
+    'Your reports, attendance, coupons, mentor membership, and profile/settings will be permanently deleted and you will be signed out. This cannot be undone.'
+  ],
+  'reset_confirm': ['초기화', 'Reset'],
+  'reset_done': ['초기화됐어요.', 'Reset complete.'],
+  'reset_failed': ['초기화에 실패했어요. 잠시 후 다시 시도해주세요.', 'Reset failed. Please try again.'],
+  // 관리자: 멤버 계정 찾기/비밀번호 재설정
+  'member_accounts': ['멤버 계정 관리', 'Member accounts'],
+  'member_accounts_hint': [
+    '멘티가 아이디(이메일)나 비밀번호를 잊었을 때 여기서 확인·재설정할 수 있어요.',
+    "Look up a member's login ID or reset their password here."
+  ],
+  'login_id': ['아이디', 'Login ID'],
+  'issue_temp_pw': ['임시 비밀번호 발급', 'Issue temp password'],
+  'reset_pw_title': ['비밀번호 재설정', 'Reset password'],
+  'reset_pw_body': [
+    '{name} 님의 임시 비밀번호를 새로 발급할까요? 기존 비밀번호는 사용할 수 없게 됩니다.',
+    'Issue a new temporary password for {name}? The old password will stop working.'
+  ],
+  'reset_pw_confirm': ['발급', 'Issue'],
+  'reset_pw_failed': ['비밀번호 재설정에 실패했어요.', 'Failed to reset password.'],
+  'temp_pw_title': ['임시 비밀번호가 발급됐어요', 'Temporary password issued'],
+  'temp_pw_desc': [
+    '아래 정보를 멤버에게 전달하세요. 로그인 후 비밀번호를 바꾸도록 안내해 주세요.',
+    'Share this with the member. Ask them to change it after logging in.'
+  ],
+  'temp_pw': ['임시 비밀번호', 'Temp password'],
+  'copied': ['복사됐어요.', 'Copied.'],
   'select_group': ['그룹 선택', 'Select group'],
   'admin_manage_title': ['관리자 관리', 'Admin management'],
   'add_admin_section': ['새 관리자 추가', 'Add new admin'],

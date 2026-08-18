@@ -31,3 +31,12 @@ class GroupInfo {
   final String name;
   const GroupInfo({required this.id, required this.name});
 }
+
+/// 관리자용: 멤버의 로그인 계정 정보(아이디=이메일).
+class MemberAccount {
+  final String uid;
+  final String name;
+  final String email; // 로그인 아이디
+  const MemberAccount(
+      {required this.uid, required this.name, required this.email});
+}

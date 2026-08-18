@@ -53,6 +53,8 @@ class CompositeRepository implements AppRepository {
   @override
   Future<bool> joinGroup(String id, String pin) => base.joinGroup(id, pin);
   @override
+  Future<void> leaveGroup(String id) => base.leaveGroup(id);
+  @override
   Future<List<MentoringReport>> fetchGroupReports(String id) =>
       base.fetchGroupReports(id);
   @override
@@ -104,6 +106,14 @@ class CompositeRepository implements AppRepository {
   @override
   Future<bool> redeemCoupon(String couponId, String code) =>
       base.redeemCoupon(couponId, code);
+  @override
+  Future<void> resetMyAccount() => base.resetMyAccount();
+  @override
+  Future<List<MemberAccount>> fetchGroupMemberAccounts(String gid) =>
+      base.fetchGroupMemberAccounts(gid);
+  @override
+  Future<({String email, String password})> resetMemberPassword(String uid) =>
+      base.resetMemberPassword(uid);
 
   @override
   Future<AttendanceSummary> fetchAttendance() => base.fetchAttendance();
