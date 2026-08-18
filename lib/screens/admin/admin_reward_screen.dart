@@ -137,32 +137,28 @@ class _AdminRewardScreenState extends State<AdminRewardScreen> {
                     style:
                         TextStyle(fontSize: 12.5, color: Colors.grey.shade500)),
                 const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _codeCtrl,
-                        keyboardType: TextInputType.number,
-                        maxLength: 4,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
-                        ],
-                        style: const TextStyle(
-                            fontSize: 20,
-                            letterSpacing: 6,
-                            fontWeight: FontWeight.bold),
-                        decoration: const InputDecoration(
-                            counterText: '', hintText: '0000'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    FilledButton(
-                      onPressed: _busy ? null : _saveCode,
-                      style:
-                          FilledButton.styleFrom(backgroundColor: _purple),
-                      child: Text(tr(context, 'save')),
-                    ),
-                  ],
+                TextField(
+                  controller: _codeCtrl,
+                  keyboardType: TextInputType.number,
+                  maxLength: 4,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  style: const TextStyle(
+                      fontSize: 20,
+                      letterSpacing: 6,
+                      fontWeight: FontWeight.bold),
+                  decoration: const InputDecoration(
+                      counterText: '', hintText: '0000'),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _busy ? null : _saveCode,
+                    style: FilledButton.styleFrom(
+                        backgroundColor: _purple,
+                        minimumSize: const Size.fromHeight(46)),
+                    child: Text(tr(context, 'save')),
+                  ),
                 ),
                 const Divider(height: 36),
 
