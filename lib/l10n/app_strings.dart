@@ -68,10 +68,10 @@ const Map<String, List<String>> _dict = {
 
   // 대시보드
   'greeting': ['안녕하세요, {name}님 👋', 'Hi, {name} 👋'],
-  'streak_done': ['연속 출석 {n}일! 🎉', '{n}-day streak! 🎉'],
-  'streak_ongoing': ['연속 출석 {n}일차!', 'Day {n} streak!'],
+  'streak_done': ['연속 출석 {n}회! 🎉', '{n} in a row! 🎉'],
+  'streak_ongoing': ['연속 출석 {n}회차!', '{n} in a row!'],
   'streak_reward_ready': ['음료 리워드를 받을 수 있어요.', 'Your drink reward is ready.'],
-  'streak_remaining': ['리워드까지 {n}일 남았어요.', '{n} day(s) left until your reward.'],
+  'streak_remaining': ['리워드까지 {n}회 남았어요.', '{n} more session(s) until your reward.'],
   'reward': ['리워드', 'Reward'],
   // 더벤티 리워드 섹션
   'reward_section_title': ['리워드', 'Reward'],
@@ -366,7 +366,7 @@ const Map<String, List<String>> _dict = {
   'checked_today_yes': ['오늘 출석', 'Checked in today'],
   'checked_today_no': ['오늘 미출석', 'Not checked in'],
   'reward_reached_badge': ['🎁 보상 대상', '🎁 Reward due'],
-  'streak_unit': ['연속 {n}일', '{n}-day streak'],
+  'streak_unit': ['연속 {n}회', '{n} in a row'],
   'total_unit': ['누적 {n}일', '{n} total'],
   'report_detail_title': ['보고서 상세', 'Report detail'],
   'report_role': ['역할', 'Role'],
@@ -465,27 +465,27 @@ const Map<String, List<String>> _dict = {
   'already_checked': ['오늘은 이미 출석했습니다.', "You've already checked in today."],
   'attendance_error': ['출석 정보를 불러오지 못했습니다.', 'Failed to load attendance.'],
   'attendance_appbar': ['출석 체크', 'Check In'],
-  'checkin_success': ['출석 완료! 연속 {n}일째 🎉', 'Checked in! {n}-day streak 🎉'],
+  'checkin_success': ['출석 완료! 연속 {n}회째 🎉', 'Checked in! {n} in a row 🎉'],
   'coffee_achieved_title': ['리워드 달성!', 'Reward unlocked!'],
   'coffee_achieved_body': [
     '{n}일 연속 출석을 달성했어요!\n출석 화면 리워드에서 음료 쿠폰을 받아보세요.',
     "You've reached a {n}-day streak!\nClaim your drink coupon in the reward section."
   ],
   'ok_great': ['좋아요!', 'Great!'],
-  'streak_now': ['현재 {n}일 연속 출석 중!', "You're on a {n}-day streak!"],
+  'streak_now': ['현재 {n}회 연속 출석 중!', "You're on a {n}-session streak!"],
   'streak_start': ['오늘 출석을 시작해보세요', 'Start your streak today'],
-  'total_days': ['누적 출석 {n}일', '{n} days total'],
-  'day_n': ['{n}일', 'Day {n}'],
+  'total_days': ['누적 출석 {n}회', '{n} sessions total'],
+  'day_n': ['{n}회', '#{n}'],
   'attended_day': ['출석한 날', 'Attended'],
   'coffee_goal': ['음료 리워드 목표', 'Drink reward goal'],
   'count_of': ['{c}/{t}회', '{c}/{t}'],
   'coffee_ready': ['🎉 아래 리워드에서 음료 쿠폰을 받으세요!',
       '🎉 Claim your drink coupon in the reward section below!'],
-  'coffee_hint': ['{goal}회 연속 출석 시 음료 쿠폰 지급 ({n}일 남음)',
-      'Given after a {goal}-day streak ({n} left)'],
+  'coffee_hint': ['{goal}회 연속 출석 시 음료 쿠폰 지급 ({n}회 남음)',
+      'Given after a {goal}-session streak ({n} left)'],
   'checked_done': ['오늘 출석 완료  ☕', "Checked in today  ☕"],
   'attendance_note': [
-    '연속 출석이 끊기면 다시 1일부터 시작됩니다. 리워드 음료 쿠폰은 더벤티 역곡북부역점에서 사용할 수 있습니다.',
+    '연속 출석이 끊기면 다시 1회부터 시작됩니다. 리워드 음료 쿠폰은 더벤티 역곡북부역점에서 사용할 수 있습니다.',
     'If your streak breaks, it restarts from day 1. Drink coupons can be used at The Venti Yeokgok North branch.'
   ],
 };
