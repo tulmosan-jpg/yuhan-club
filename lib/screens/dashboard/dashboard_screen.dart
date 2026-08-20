@@ -23,13 +23,18 @@ import '../../models/report.dart';
 
 /// 홈 대시보드: 오늘의 요약 (유한 녹색 브랜드 리디자인).
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, this.onNavigate, this.onReward});
+  const DashboardScreen(
+      {super.key, this.onNavigate, this.onReward, this.refresh});
 
   /// 하단 탭 전환 콜백 (0:홈 1:보고서 2:대외활동 3:출석).
   final void Function(int index)? onNavigate;
 
   /// 리워드 노드 탭 → 출석 탭 리워드 섹션으로 이동.
   final VoidCallback? onReward;
+
+  /// 홈 탭이 보일 때마다 값이 바뀌며 대시보드를 다시 로드한다
+  /// (출석/스트릭 등 다른 화면 변경분을 즉시 반영).
+  final ValueNotifier<int>? refresh;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -42,6 +47,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _future = _load();
+    widget.refresh?.addListener(_reload);
     // 실제 모드 첫 진입 시 알림 권한 요청("허용하시겠습니까" 시스템 창).
     // 이미 응답했으면 OS 가 다시 띄우지 않으므로 매번 호출해도 안전.
     if (!AppConfig.useMock) {
@@ -49,6 +55,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         NotificationService.instance.requestPermission();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    widget.refresh?.removeListener(_reload);
+    super.dispose();
+  }
+
+  void _reload() {
+    if (mounted) setState(() => _future = _load());
   }
 
   Future<_DashboardData> _load() async {

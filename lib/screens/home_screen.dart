@@ -27,9 +27,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final ValueNotifier<int> _rewardScroll = ValueNotifier(0);
   // 출석 탭이 보일 때마다 그룹 목록을 다시 불러오게 하는 신호.
   final ValueNotifier<int> _groupsRefresh = ValueNotifier(0);
+  // 홈 탭이 보일 때마다 대시보드를 다시 로드하게 하는 신호.
+  final ValueNotifier<int> _homeRefresh = ValueNotifier(0);
 
   void _goTo(int i) {
     setState(() => _index = i);
+    if (i == 0) _homeRefresh.value++;
     if (i == 3) _groupsRefresh.value++;
   }
 
@@ -44,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _rewardScroll.dispose();
     _groupsRefresh.dispose();
+    _homeRefresh.dispose();
     super.dispose();
   }
 
@@ -78,7 +82,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildMemberShell(BuildContext context) {
     final pages = [
-      DashboardScreen(onNavigate: _goTo, onReward: _goToReward),
+      DashboardScreen(
+          onNavigate: _goTo, onReward: _goToReward, refresh: _homeRefresh),
       ReportsScreen(onNeedMentor: () => _goTo(3)),
       const ActivitiesScreen(),
       AttendanceScreen(
