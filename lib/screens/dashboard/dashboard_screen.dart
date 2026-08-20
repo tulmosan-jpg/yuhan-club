@@ -483,9 +483,12 @@ class _StreakCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final goal = AttendanceLogic.coffeeStreak; // 2 (연속 2일 → 커피)
-    final streak = summary.currentStreak.clamp(0, goal);
-    final remaining = (goal - streak).clamp(0, goal);
+    final goal = AttendanceLogic.coffeeStreak; // 2 (연속 2회마다 → 음료)
+    final streak = summary.currentStreak; // 표시용: 실제 연속출석 수(출석 화면과 동일)
+    // 리워드는 2회 '주기'마다 지급 → 다음 보상까지 남은 횟수는 주기 기준.
+    // 예) 2회=받을수있음, 3회=1회 남음, 4회=받을수있음.
+    final cyclePos = goal == 0 ? 0 : streak % goal;
+    final remaining = (streak > 0 && cyclePos == 0) ? 0 : goal - cyclePos;
 
     return Container(
       padding: const EdgeInsets.all(22),
@@ -578,15 +581,23 @@ class _StreakTrack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final trackDays = AttendanceLogic.streakTrackDays;
-    final rewardIndex = AttendanceLogic.coffeeStreak - 1;
+    final track = AttendanceLogic.streakTrackDays; // 한 번에 보이는 노드 수(5)
+    final cycle = AttendanceLogic.coffeeStreak; // 2회마다 리워드
+    // 현재 연속출석에 맞춰 창이 이동한다(예: 7회 → 4~8회 노드가 보임).
+    // 리워드 마커는 2·4·6·8… 회차에 표시.
+    final justReached = streak > 0 && streak % cycle == 0;
+    final nextReward = streak == 0
+        ? cycle
+        : (justReached ? streak : ((streak ~/ cycle) + 1) * cycle);
+    final end = nextReward < track ? track : nextReward;
+    final start = end - track + 1 < 1 ? 1 : end - track + 1;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(trackDays, (i) {
-        final done = i < streak;
-        final isReward = i == rewardIndex;
-        // 요일 대신 '1일 2일 3일…'(출석 섹션과 동일).
-        final label = tr(context, 'day_n', {'n': '${i + 1}'});
+      children: List.generate(track, (i) {
+        final dayNum = start + i; // 실제 출석 회차 번호
+        final done = dayNum <= streak;
+        final isReward = dayNum % cycle == 0;
+        final label = tr(context, 'day_n', {'n': '$dayNum'});
         final node = Column(
           children: [
             Container(

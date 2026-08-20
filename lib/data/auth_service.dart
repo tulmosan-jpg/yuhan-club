@@ -126,8 +126,11 @@ class AuthService {
   Future<void> removeAdmin(String uid) =>
       _db.collection('admins').doc(uid).delete();
 
-  Future<void> sendPasswordReset(String email) =>
-      _auth.sendPasswordResetEmail(email: email.trim());
+  Future<void> sendPasswordReset(String email) async {
+    // 재설정 메일과 링크가 여는 페이지(만료/오류 안내 포함)를 한국어로.
+    await _auth.setLanguageCode('ko');
+    await _auth.sendPasswordResetEmail(email: email.trim());
+  }
 
   /// FirebaseAuthException 코드를 번역 사전 키로 변환. (UI에서 tr 로 표시)
   static String errorKey(Object error) {

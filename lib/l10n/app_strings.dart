@@ -38,6 +38,7 @@ const Map<String, List<String>> _dict = {
   'login_admin': ['관리자 로그인', 'Admin'],
   'admin_login': ['관리자 로그인', 'Admin login'],
   'not_admin': ['관리자 계정이 아닙니다.', 'This is not an admin account.'],
+  'use_admin_login': ['관리자 계정입니다. 관리자 로그인을 이용하세요.', 'This is an admin account. Please use admin login.'],
   'login': ['로그인', 'Log in'],
   'signup': ['회원가입', 'Sign up'],
   'name': ['이름', 'Name'],
@@ -71,7 +72,7 @@ const Map<String, List<String>> _dict = {
   'streak_done': ['연속 출석 {n}회! 🎉', '{n} in a row! 🎉'],
   'streak_ongoing': ['연속 출석 {n}회차!', '{n} in a row!'],
   'streak_reward_ready': ['음료 리워드를 받을 수 있어요.', 'Your drink reward is ready.'],
-  'streak_remaining': ['리워드까지 {n}회 남았어요.', '{n} more session(s) until your reward.'],
+  'streak_remaining': ['다음 리워드까지 {n}회 남았어요.', '{n} more session(s) until your next reward.'],
   'reward': ['리워드', 'Reward'],
   // 빽다방 리워드 섹션
   'reward_section_title': ['리워드', 'Reward'],
@@ -495,8 +496,8 @@ const Map<String, List<String>> _dict = {
   'count_of': ['{c}/{t}회', '{c}/{t}'],
   'coffee_ready': ['🎉 아래 리워드에서 음료 쿠폰을 받으세요!',
       '🎉 Claim your drink coupon in the reward section below!'],
-  'coffee_hint': ['{goal}회 연속 출석 시 음료 쿠폰 지급 ({n}회 남음)',
-      'Given after a {goal}-session streak ({n} left)'],
+  'coffee_hint': ['출석 {goal}회마다 음료 쿠폰 지급 · 다음 쿠폰까지 {n}회 남음',
+      'A drink coupon every {goal} sessions · {n} left to next'],
   'checked_done': ['오늘 출석 완료  ☕', "Checked in today  ☕"],
   'attendance_note': [
     '연속 출석이 끊기면 다시 1회부터 시작됩니다. 리워드 음료 쿠폰은 빽다방 부천역곡역북부점에서 사용할 수 있습니다.',

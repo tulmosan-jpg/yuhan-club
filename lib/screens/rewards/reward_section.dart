@@ -435,7 +435,6 @@ class _CouponCard extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        decoration: used ? TextDecoration.lineThrough : null,
                         color: used ? Colors.grey : Colors.black87)),
                 const SizedBox(height: 2),
                 Text(tr(context, 'reward_store'),

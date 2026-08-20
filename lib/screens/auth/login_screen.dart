@@ -76,6 +76,16 @@ class _LoginScreenState extends State<LoginScreen> {
         auth.loggedInAsAdmin = false;
       } else {
         await auth.signIn(email: _email.text, password: _password.text);
+        // 관리자 계정은 일반 로그인으로 들어올 수 없다(관리자 로그인 사용).
+        if (await auth.checkIsAdmin()) {
+          await auth.signOut();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(tr(context, 'use_admin_login'))));
+            setState(() => _busy = false);
+          }
+          return;
+        }
         auth.loggedInAsAdmin = false;
       }
       // 아이디 저장 / 자동 로그인 설정 저장.

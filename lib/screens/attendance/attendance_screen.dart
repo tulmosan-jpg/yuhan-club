@@ -810,13 +810,21 @@ class _StreakTrack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final trackDays = AttendanceLogic.streakTrackDays;
-    final rewardIndex = AttendanceLogic.coffeeStreak - 1;
+    final track = AttendanceLogic.streakTrackDays; // 한 번에 보이는 노드 수(5)
+    final cycle = AttendanceLogic.coffeeStreak; // 2회마다 리워드
+    // 현재 연속출석에 맞춰 창이 이동(예: 7회 → 4~8회). 리워드는 2·4·6…회차.
+    final justReached = streak > 0 && streak % cycle == 0;
+    final nextReward = streak == 0
+        ? cycle
+        : (justReached ? streak : ((streak ~/ cycle) + 1) * cycle);
+    final end = nextReward < track ? track : nextReward;
+    final start = end - track + 1 < 1 ? 1 : end - track + 1;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(trackDays, (i) {
-        final done = i < streak;
-        final isReward = i == rewardIndex;
+      children: List.generate(track, (i) {
+        final dayNum = start + i;
+        final done = dayNum <= streak;
+        final isReward = dayNum % cycle == 0;
         return Column(
           children: [
             Container(
@@ -845,7 +853,7 @@ class _StreakTrack extends StatelessWidget {
             Text(
               isReward
                   ? tr(context, 'reward')
-                  : tr(context, 'day_n', {'n': '${i + 1}'}),
+                  : tr(context, 'day_n', {'n': '$dayNum'}),
               style: TextStyle(
                 fontSize: 10,
                 fontWeight:
@@ -1035,10 +1043,14 @@ class _ProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final target = AttendanceLogic.coffeeStreak;
-    final current = summary.currentStreak.clamp(0, target);
+    // 리워드는 2회 '주기'마다 지급 → 주기 내 위치로 진행/남은 횟수 계산.
+    // 예) 2회=달성(보상), 3회=1/2·1회 남음, 4회=달성.
+    final streak = summary.currentStreak;
+    final cyclePos = target == 0 ? 0 : streak % target;
+    final achieved = streak > 0 && cyclePos == 0;
+    final current = achieved ? target : cyclePos;
     final progress = target == 0 ? 0.0 : current / target;
-    final remaining = (target - summary.currentStreak).clamp(0, target);
-    final achieved = summary.currentStreak >= target;
+    final remaining = achieved ? 0 : target - cyclePos;
 
     return Container(
       padding: const EdgeInsets.all(18),

@@ -469,6 +469,7 @@ class MockRepository implements AppRepository {
         summary.currentStreak >= _rewardSnapStreak ? _rewardUnits : 0;
     if (earned - claimed < 1) throw Exception('not_eligible');
     if ((_stock[drinkId] ?? 0) <= 0) throw Exception('sold_out');
+    // 재고는 쿠폰을 '받는(발급)' 시점에 차감한다.
     _stock[drinkId] = (_stock[drinkId] ?? 0) - 1;
     _rewardUnits = claimed + 1;
     _rewardSnapStreak = summary.currentStreak;
@@ -501,6 +502,7 @@ class MockRepository implements AppRepository {
       used: true,
       usedAt: DateTime.now(),
     );
+    // 재고는 발급 시 이미 차감됨 → 사용 시엔 상태만 변경.
     return true;
   }
 

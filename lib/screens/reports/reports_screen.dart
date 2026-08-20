@@ -166,7 +166,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
           final reports = _apply(all);
           return Column(
             children: [
-              if (_isAdmin) _AdminBanner(),
               _FilterBar(
                 selected: _filter,
                 draftCount: draftCount,
@@ -288,34 +287,6 @@ class _FilterBar extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _AdminBanner extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.brandTonal,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.brand200),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.shield_outlined,
-              size: 18, color: AppTheme.brandOnTonal),
-          const SizedBox(width: 8),
-          Text(tr(context, 'admin_mode'),
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.brandOnTonal)),
-        ],
       ),
     );
   }

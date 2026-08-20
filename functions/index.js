@@ -259,6 +259,7 @@ exports.claimCoupon = onCall(async (request) => {
     if (remaining <= 0) {
       throw new HttpsError("resource-exhausted", "해당 음료 재고가 소진됐습니다.");
     }
+    // 재고는 쿠폰을 '받는(발급)' 시점에 차감한다.
     const newStock = Object.assign({}, stock);
     newStock[drinkId] = remaining - 1;
     tx.set(cfgRef, {stock: newStock}, {merge: true});
@@ -371,6 +372,7 @@ exports.redeemCoupon = onCall(async (request) => {
   if (!couponId || !code) {
     throw new HttpsError("invalid-argument", "쿠폰/코드가 필요합니다.");
   }
+  // 재고는 발급 시 이미 차감됨 → 사용 시엔 상태(used)만 표시하고 재고는 유지.
   const cfgSnap = await db.collection("config").doc("rewards").get();
   const cfgCode = (cfgSnap.data() || {}).code || "";
   if (!cfgCode || String(cfgCode) !== String(code).trim()) {
