@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
@@ -18,6 +19,18 @@ import 'l10n/locale_provider.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ko');
+
+  // Android 15+ Edge-to-Edge: 시스템바를 투명으로 두고 앱이 화면 끝까지 그린다.
+  // (콘텐츠는 각 화면의 SafeArea/AppBar/NavigationBar가 인셋을 처리해 겹치지 않음)
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark, // 밝은 배경 → 어두운 아이콘
+    statusBarBrightness: Brightness.light, // iOS
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.dark,
+    systemNavigationBarContrastEnforced: false,
+  ));
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
