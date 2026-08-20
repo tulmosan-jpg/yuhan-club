@@ -51,8 +51,7 @@ class MockRepository implements AppRepository {
       title: '2026 서울국제식품산업대전 (SEOUL FOOD)',
       organizer: 'KOTRA / aT',
       description:
-          '국내 최대 규모의 식품 박람회. 식품·외식·급식 산업 최신 트렌드와 채용 부스를 만나볼 수 있습니다. '
-          '식품영양학과 재학생 단체 관람 신청 예정.',
+          '국내 최대 규모의 식품 박람회.\n\n■ 모집 대상\n- 식품영양학과 재학생\n- 휴학생 포함\n\n■ 기간 : 8월 24일(월)까지\n\n📌지원 방법\nhttps://www.seoulfood.or.kr',
       location: '킨텍스(KINTEX) 제1전시장',
       startDate: DateTime.now().add(const Duration(days: 20)),
       deadline: DateTime.now().add(const Duration(days: 12)),
@@ -414,7 +413,7 @@ class MockRepository implements AppRepository {
     return (_rsvp[gid]?.values.toList()) ?? [];
   }
 
-  // ── 리워드(더벤티 쿠폰) 데모 ──
+  // ── 리워드(빽다방 쿠폰) 데모 ──
   String _rewardCode = '1234';
   final Map<String, int> _stock = {...RewardConfig.defaultStock};
   final List<Coupon> _coupons = [];

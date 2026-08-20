@@ -8,10 +8,10 @@ import '../../l10n/app_strings.dart';
 import '../../models/attendance.dart';
 import '../../models/reward.dart';
 
-const Color _purple = Color(kTheventiPurpleValue);
+const Color _purple = Color(kPaikNavyValue);
 
-/// 출석 화면에 들어가는 더벤티 리워드 섹션.
-/// 연속 출석 2회당 음료 쿠폰 1개. 매장(역곡북부역점) 직원 코드로 사용 처리.
+/// 출석 화면에 들어가는 빽다방 리워드 섹션.
+/// 연속 출석 2회당 음료 쿠폰 1개. 매장(부천역곡역북부점) 직원 코드로 사용 처리.
 class RewardSection extends StatefulWidget {
   const RewardSection({super.key, required this.summary});
   final AttendanceSummary summary;
@@ -185,7 +185,7 @@ class _RewardSectionState extends State<RewardSection> {
         children: [
           Row(
             children: [
-              Image.asset(kTheventiLogo, height: 16),
+              Image.asset(kPaikLogo, height: 16),
               const SizedBox(width: 6),
               Text(tr(context, 'reward_section_title'),
                   style: const TextStyle(
@@ -292,8 +292,7 @@ class _RewardSectionState extends State<RewardSection> {
   }
 
   String _shortName(String id) => switch (id) {
-        'peach' => '복숭아',
-        'plum' => '매실',
+        'peachtea' => '복숭아 아이스티',
         _ => '아메리카노',
       };
 }

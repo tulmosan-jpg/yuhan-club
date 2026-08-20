@@ -71,7 +71,7 @@ class Rsvp {
   });
 }
 
-/// 연속 출석 보상 단계 (더벤티 음료 쿠폰 제공)
+/// 연속 출석 보상 단계 (빽다방 음료 쿠폰 제공)
 class RewardTier {
   final int streak; // 필요한 연속 출석 횟수
   final String reward; // 상품명

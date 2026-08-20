@@ -8,9 +8,9 @@ class AttendanceLogic {
   /// 스트릭 트랙에 표시할 칸 수(보상 기준과 별개로 시각적 길이 유지).
   static const int streakTrackDays = 5;
 
-  /// 보상 단계 (더벤티 음료 쿠폰).
+  /// 보상 단계 (빽다방 음료 쿠폰).
   static const List<RewardTier> defaultTiers = [
-    RewardTier(coffeeStreak, '더벤티 음료 쿠폰'),
+    RewardTier(coffeeStreak, '빽다방 음료 쿠폰'),
   ];
 
   /// [days]는 출석한 날짜들(자정 정규화 권장).

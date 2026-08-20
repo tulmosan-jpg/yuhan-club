@@ -39,26 +39,28 @@ class ActivityDetailScreen extends StatelessWidget {
           if (activity.imageUrl != null && activity.imageUrl!.isNotEmpty) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
+              // 포스터 원본 비율 유지: 폭은 꽉 채우고 높이는 이미지 비율에 맞춰
+              // 자동 조절 → 세로/가로 어떤 포스터도 잘리지 않고 전체가 보인다.
+              child: Container(
+                color: AppTheme.brandTonal,
+                alignment: Alignment.center,
                 child: Image.network(
                   activity.imageUrl!,
-                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  fit: BoxFit.fitWidth,
                   loadingBuilder: (context, child, progress) => progress == null
                       ? child
-                      : Container(
-                          color: AppTheme.brandTonal,
-                          alignment: Alignment.center,
-                          child: const SizedBox(
+                      : const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 80),
+                          child: SizedBox(
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: AppTheme.brand500),
                           ),
                         ),
-                  errorBuilder: (_, _, _) => Container(
-                    color: AppTheme.brandTonal,
-                    alignment: Alignment.center,
+                  errorBuilder: (_, _, _) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 60),
                     child: Icon(ActivityStyle.icon(activity.type),
                         size: 48, color: AppTheme.brandOnTonal),
                   ),

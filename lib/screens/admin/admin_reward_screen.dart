@@ -7,7 +7,7 @@ import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/reward.dart';
 
-const Color _purple = Color(kTheventiPurpleValue);
+const Color _purple = Color(kPaikNavyValue);
 
 /// 관리자: 리워드 코드·재고 설정 + 발급 쿠폰 현황.
 class AdminRewardScreen extends StatefulWidget {

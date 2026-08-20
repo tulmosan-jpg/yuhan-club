@@ -25,18 +25,25 @@ class _HomeScreenState extends State<HomeScreen> {
   int _index = 0;
   // 출석 탭 리워드 섹션으로 스크롤 요청 신호(값이 바뀔 때마다 스크롤).
   final ValueNotifier<int> _rewardScroll = ValueNotifier(0);
+  // 출석 탭이 보일 때마다 그룹 목록을 다시 불러오게 하는 신호.
+  final ValueNotifier<int> _groupsRefresh = ValueNotifier(0);
 
-  void _goTo(int i) => setState(() => _index = i);
+  void _goTo(int i) {
+    setState(() => _index = i);
+    if (i == 3) _groupsRefresh.value++;
+  }
 
   // 홈 리워드 노드 → 출석 탭으로 이동 + 리워드 섹션으로 스크롤.
   void _goToReward() {
     setState(() => _index = 3);
+    _groupsRefresh.value++;
     _rewardScroll.value++;
   }
 
   @override
   void dispose() {
     _rewardScroll.dispose();
+    _groupsRefresh.dispose();
     super.dispose();
   }
 
@@ -74,14 +81,15 @@ class _HomeScreenState extends State<HomeScreen> {
       DashboardScreen(onNavigate: _goTo, onReward: _goToReward),
       ReportsScreen(onNeedMentor: () => _goTo(3)),
       const ActivitiesScreen(),
-      AttendanceScreen(rewardScroll: _rewardScroll),
+      AttendanceScreen(
+          rewardScroll: _rewardScroll, groupsRefresh: _groupsRefresh),
       const CertificationsScreen(),
     ];
     return Scaffold(
       body: IndexedStack(index: _index, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: _goTo,
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.home_outlined),

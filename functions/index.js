@@ -164,12 +164,11 @@ exports.onRsvpCreated = onDocumentCreated(
     },
 );
 
-// ══ 리워드(더벤티 쿠폰) — 서버에서 자격/재고 검증 ══════════════════
+// ══ 리워드(빽다방 쿠폰) — 서버에서 자격/재고 검증 ══════════════════
 
 const COFFEE_STREAK = 2; // 연속 출석 2회당 쿠폰 1개
 const DRINK_NAMES = {
-  peach: "제로 복숭아 아이스티",
-  plum: "제로 매실 아이스티",
+  peachtea: "제로슈거 납작복숭아 아이스티",
   americano: "아이스 아메리카노",
 };
 

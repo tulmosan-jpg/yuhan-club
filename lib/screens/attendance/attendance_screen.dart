@@ -14,10 +14,14 @@ import '../../models/group.dart';
 
 /// 그룹별 출석 화면. 내 그룹의 출석일에만 출석 가능.
 class AttendanceScreen extends StatefulWidget {
-  const AttendanceScreen({super.key, this.rewardScroll});
+  const AttendanceScreen({super.key, this.rewardScroll, this.groupsRefresh});
 
   /// 홈에서 리워드 노드를 누르면 값이 바뀌며 리워드 섹션으로 스크롤한다.
   final ValueNotifier<int>? rewardScroll;
+
+  /// 다른 화면(보고서 흐름 등)에서 멘토에 가입/변경하면 값이 바뀌며
+  /// 출석 화면의 그룹 목록을 다시 불러온다.
+  final ValueNotifier<int>? groupsRefresh;
 
   @override
   State<AttendanceScreen> createState() => _AttendanceScreenState();
@@ -40,11 +44,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     super.initState();
     _loadGroups();
     widget.rewardScroll?.addListener(_scrollToReward);
+    widget.groupsRefresh?.addListener(_loadGroups);
   }
 
   @override
   void dispose() {
     widget.rewardScroll?.removeListener(_scrollToReward);
+    widget.groupsRefresh?.removeListener(_loadGroups);
     _scrollController.dispose();
     super.dispose();
   }
@@ -342,6 +348,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           );
         },
       );
+  }
+}
+
+/// 멘토 미선택 회원이 멘토를 고르는 독립 화면.
+/// 멘토 가입에 성공하면 `true` 로 pop 한다(보고서 작성 흐름에서 재사용).
+class MentorPickScreen extends StatelessWidget {
+  const MentorPickScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(tr(context, 'choose_mentor'),
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+      ),
+      body: _MentorPicker(onJoined: () async {
+        if (context.mounted) Navigator.of(context).pop(true);
+      }),
+    );
   }
 }
 

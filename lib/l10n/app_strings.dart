@@ -73,11 +73,11 @@ const Map<String, List<String>> _dict = {
   'streak_reward_ready': ['음료 리워드를 받을 수 있어요.', 'Your drink reward is ready.'],
   'streak_remaining': ['리워드까지 {n}회 남았어요.', '{n} more session(s) until your reward.'],
   'reward': ['리워드', 'Reward'],
-  // 더벤티 리워드 섹션
+  // 빽다방 리워드 섹션
   'reward_section_title': ['리워드', 'Reward'],
   'reward_section_sub': [
-    '연속 출석 시 더벤티 음료 쿠폰 1개 지급 (역곡북부역점 사용)',
-    'Earn a The Venti drink coupon for an attendance streak.'
+    '연속 출석 시 빽다방 음료 쿠폰 1개 지급 (부천역곡역북부점 사용)',
+    'Earn a Paik\'s Coffee drink coupon for an attendance streak.'
   ],
   'reward_claim_n': ['음료 쿠폰 받기 ({n}개)', 'Claim drink coupon ({n})'],
   'reward_none_yet': [
@@ -92,10 +92,10 @@ const Map<String, List<String>> _dict = {
   'coupon_not_eligible': ['아직 받을 수 있는 리워드가 없어요.', 'No reward available yet.'],
   'coupon_failed': ['쿠폰 발급에 실패했어요.', 'Failed to issue coupon.'],
   'choose_drink': ['음료를 선택하세요', 'Choose a drink'],
-  'choose_drink_sub': ['쿠폰으로 받을 더벤티 음료 1종을 골라주세요.', 'Pick one drink to receive.'],
+  'choose_drink_sub': ['쿠폰으로 받을 빽다방 음료 1종을 골라주세요.', 'Pick one drink to receive.'],
   'sold_out': ['품절', 'Sold out'],
   'remaining_n': ['{n}개 남음', '{n} left'],
-  'reward_store': ['더벤티 역곡북부역점 · 매장 사용', 'The Venti Yeokgok N. · in-store only'],
+  'reward_store': ['빽다방 부천역곡역북부점 · 매장 사용', 'Paik\'s Coffee Yeokgok N. · in-store only'],
   'issued_at': ['발급', 'Issued'],
   'used_at': ['사용', 'Used'],
   'coupon_used_badge': ['사용완료', 'Used'],
@@ -264,7 +264,7 @@ const Map<String, List<String>> _dict = {
   'reward_admin_title': ['리워드 관리', 'Reward management'],
   'redeem_code_section': ['사용완료 코드 (4자리)', 'Redeem code (4-digit)'],
   'redeem_code_hint': [
-    '더벤티 역곡북부역점 직원이 쿠폰 사용 시 입력하는 코드입니다.',
+    '빽다방 부천역곡역북부점 직원이 쿠폰 사용 시 입력하는 코드입니다.',
     'Code the store staff enters to redeem coupons.'
   ],
   'code_must_be_4': ['코드는 4자리 숫자여야 합니다.', 'Code must be 4 digits.'],
@@ -390,15 +390,29 @@ const Map<String, List<String>> _dict = {
   'status_submitted': ['제출완료', 'Submitted'],
 
   // 보고서 편집
-  'report_new_title': ['보고서 작성', 'Write Report'],
+  'report_new_title': ['새 보고서 작성', 'New Report'],
   'report_edit_title': ['보고서 수정', 'Edit Report'],
-  'report_author_role': ['작성자 역할', 'Author role'],
+  'report_name_label': ['이름', 'Name'],
+  'report_name_hint': ['본인 이름을 입력하세요', 'Enter your name'],
+  'required_tag': ['필수', 'Required'],
+  'report_title_hint': ['예: 5월 정기모임 및 조리실습', 'e.g. May regular meeting & cooking practice'],
+  'report_content_hint': [
+    '오늘 진행한 동아리 활동 내용을 자세히 적어주세요.\n(어떤 활동을 했는지, 무엇을 배우고 느꼈는지 등)',
+    'Describe today\'s club activity in detail.\n(what you did, what you learned, etc.)'
+  ],
+  'report_feedback_hint': [
+    '활동을 통해 느낀 점이나 서로에게 남기고 싶은 피드백을 적어주세요.',
+    'Share your reflection or feedback from the activity.'
+  ],
+  'hours_n_label': ['{n}시간', '{n}h'],
+  'report_partner_required': ['함께한 멘티/멘토 이름을 입력해주세요.', 'Please enter the mentee/mentor name.'],
+  'report_author_role': ['나의 역할', 'Author role'],
   'select_role_first': ['작성자 역할을 선택하세요.', 'Please select the author role.'],
   'report_title_field': ['제목', 'Title'],
   'partner_mentee': ['멘티 이름', 'Mentee name'],
   'partner_mentor': ['멘토 이름', 'Mentor name'],
-  'report_date': ['활동 일자', 'Activity date'],
-  'report_time': ['활동 시각', 'Activity time'],
+  'report_date': ['활동 날짜', 'Activity date'],
+  'report_time': ['활동 시간', 'Activity time'],
   'report_hours': ['활동 소요시간 (시간)', 'Duration (hours)'],
   'report_content': ['활동 내용', 'Activity details'],
   'report_feedback_field': ['소감/피드백', 'Reflection/Feedback'],
@@ -418,7 +432,7 @@ const Map<String, List<String>> _dict = {
   'streak_days': ['{n}일', '{n} day(s)'],
   'streak_encourage': ['꾸준함이 쌓이고 있어요.', 'Your consistency is building up.'],
   'attend_reward': ['출석 리워드', 'Attendance reward'],
-  'coffee_gifticon': ['더벤티 음료 쿠폰', 'The Venti drink coupon'],
+  'coffee_gifticon': ['빽다방 음료 쿠폰', 'Paik\'s Coffee drink coupon'],
   'reward_condition': ['{n}일 연속 출석 시 지급', 'Given after a {n}-day streak'],
   'check_in_today': ['오늘 출석하기', 'Check in today'],
   'not_attendance_day': ['오늘은 출석일이 아닙니다', 'Not an attendance day'],
@@ -485,8 +499,8 @@ const Map<String, List<String>> _dict = {
       'Given after a {goal}-session streak ({n} left)'],
   'checked_done': ['오늘 출석 완료  ☕', "Checked in today  ☕"],
   'attendance_note': [
-    '연속 출석이 끊기면 다시 1회부터 시작됩니다. 리워드 음료 쿠폰은 더벤티 역곡북부역점에서 사용할 수 있습니다.',
-    'If your streak breaks, it restarts from day 1. Drink coupons can be used at The Venti Yeokgok North branch.'
+    '연속 출석이 끊기면 다시 1회부터 시작됩니다. 리워드 음료 쿠폰은 빽다방 부천역곡역북부점에서 사용할 수 있습니다.',
+    'If your streak breaks, it restarts from day 1. Drink coupons can be used at the Paik\'s Coffee Yeokgok North branch.'
   ],
 };
 

@@ -7,6 +7,7 @@ import '../../data/auth_service.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/report.dart';
+import '../attendance/attendance_screen.dart';
 import 'report_detail_screen.dart';
 import 'report_editor_screen.dart';
 
@@ -51,15 +52,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _openEditor([MentoringReport? report]) async {
     String? groupId = report?.groupId;
-    // 새 보고서: 멘토(그룹) 미선택이면 먼저 멘토를 선택하도록 안내.
+    // 새 보고서: 멘토(그룹) 미선택이면 멘토 선택 화면을 띄우고,
+    // 선택(가입)하면 곧바로 보고서 작성창으로 이어간다.
     if (report == null && !_isAdmin) {
-      final mine = await context.read<AppRepository>().fetchMyGroups();
+      var mine = await context.read<AppRepository>().fetchMyGroups();
       if (!mounted) return;
       if (mine.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(tr(context, 'select_mentor_first'))));
-        widget.onNeedMentor?.call();
-        return;
+        final joined = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(builder: (_) => const MentorPickScreen()),
+        );
+        if (!mounted || joined != true) return;
+        mine = await context.read<AppRepository>().fetchMyGroups();
+        if (!mounted || mine.isEmpty) return;
       }
       groupId = mine.first.id;
     }
@@ -390,7 +394,7 @@ class _ReportCard extends StatelessWidget {
                           fontSize: 12,
                           color: Colors.grey.shade500,
                           fontWeight: FontWeight.w500)),
-                  if (isAdmin && onDelete != null) ...[
+                  if (onDelete != null) ...[
                     const SizedBox(width: 4),
                     InkWell(
                       onTap: onDelete,

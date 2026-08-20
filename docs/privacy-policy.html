@@ -3,59 +3,116 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>개인정보처리방침 - 유한대 식품영양학과</title>
+<title>개인정보처리방침 · 유한대 식품영양학과 앱</title>
 <style>
-  body { font-family: -apple-system, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.8; color: #333; }
-  h1 { font-size: 1.5rem; border-bottom: 2px solid #1F9D6B; padding-bottom: 8px; }
-  h2 { font-size: 1.1rem; margin-top: 32px; color: #17795A; }
-  p, li { font-size: 0.95rem; }
-  .date { color: #888; font-size: 0.85rem; }
+  :root{--green:#1F9D6B;--dark:#114033;--muted:#52525B;--line:#E4E4E7;}
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+    color:#18181B;line-height:1.75;margin:0;background:#FAFAFA;}
+  .wrap{max-width:760px;margin:0 auto;padding:40px 20px 80px;}
+  header{border-bottom:3px solid var(--green);padding-bottom:20px;margin-bottom:28px;}
+  h1{color:var(--dark);font-size:26px;margin:0 0 6px;}
+  .sub{color:var(--muted);font-size:14px;}
+  h2{color:var(--green);font-size:19px;margin:34px 0 10px;}
+  p,li{color:#27272A;font-size:15px;}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;}
+  th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top;}
+  th{background:#E0F5EB;color:var(--dark);white-space:nowrap;}
+  code{background:#F4F4F5;padding:1px 6px;border-radius:6px;font-size:13px;}
+  .note{background:#E0F5EB;border-left:4px solid var(--green);padding:12px 16px;border-radius:8px;margin:16px 0;font-size:14px;}
+  footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;}
 </style>
 </head>
 <body>
-<h1>개인정보처리방침</h1>
-<p class="date">시행일: 2026년 8월 18일</p>
+<div class="wrap">
+<header>
+  <h1>개인정보처리방침</h1>
+  <div class="sub">유한대학교 식품영양학과 동아리 앱 “유한대 식품영양학과” (이하 “본 앱”)</div>
+  <div class="sub">시행일: 2026년 8월 19일 · 최종 개정일: 2026년 8월 19일</div>
+</header>
 
-<p>유한대학교 식품영양학과(이하 "학과")는 「유한대 식품영양학과」 앱(이하 "앱")을 운영함에 있어 이용자의 개인정보를 중요시하며, 아래와 같이 개인정보처리방침을 안내합니다.</p>
+<p>유한대학교 식품영양학과 학생회(이하 “운영자”)는 본 앱 이용자의 개인정보를 소중히 여기며,
+「개인정보 보호법」 등 관련 법령과 Apple App Store 정책을 준수합니다. 본 방침은 본 앱이 어떤 정보를
+수집·이용·보관·보호·파기하는지와 이용자의 권리를 안내합니다.</p>
+
+<div class="note">본 앱은 광고를 게재하지 않고, 이용자를 추적(트래킹)하지 않으며, 개인정보를 판매하거나
+마케팅 목적으로 제3자에게 제공하지 않습니다.</div>
 
 <h2>1. 수집하는 개인정보 항목</h2>
+<p>본 앱은 서비스 제공에 필요한 최소한의 정보만 수집합니다.</p>
+<table>
+  <tr><th>구분</th><th>항목</th><th>수집 시점</th></tr>
+  <tr><td>계정 정보(필수)</td><td>이름, 이메일 주소, 비밀번호(암호화 저장)</td><td>회원가입 시</td></tr>
+  <tr><td>프로필(선택)</td><td>프로필 사진</td><td>이용자가 직접 등록 시</td></tr>
+  <tr><td>활동 정보</td><td>동아리 보고서 내용·사진, 출석 기록, 참석 여부(RSVP) 응답, 소속 멘토(그룹)</td><td>기능 이용 시</td></tr>
+  <tr><td>리워드 정보</td><td>발급/사용 쿠폰 내역</td><td>리워드 이용 시</td></tr>
+  <tr><td>기기 정보</td><td>푸시 알림 토큰(기기 식별용), 앱 설정(언어·알림)</td><td>알림 허용 시</td></tr>
+</table>
+<p>비밀번호는 인증 서비스(Firebase Authentication)에 의해 암호화되어 저장되며, 운영자를 포함해
+누구도 원문을 조회할 수 없습니다.</p>
+
+<h2>2. 개인정보의 이용 목적</h2>
 <ul>
-  <li><strong>회원가입 시:</strong> 이메일 주소, 비밀번호, 이름</li>
-  <li><strong>서비스 이용 시:</strong> 출석 기록, 동아리 보고서 내용, 프로필 사진(선택)</li>
+  <li>회원 식별 및 로그인, 계정 관리</li>
+  <li>출석 체크, 동아리 보고서 작성·제출, 참석 응답 등 핵심 기능 제공</li>
+  <li>연속 출석 리워드(음료 쿠폰) 발급 및 사용 처리</li>
+  <li>모임 일정·공지 등 앱 내 알림 발송(이용자가 허용한 경우)</li>
+  <li>서비스 운영·오류 대응 및 부정 이용 방지</li>
 </ul>
 
-<h2>2. 개인정보의 수집 및 이용 목적</h2>
+<h2>3. 처리 위탁 및 제3자 제공</h2>
+<p>본 앱은 원활한 서비스 제공을 위해 아래와 같이 개인정보 처리를 위탁합니다. 그 외 제3자에게
+개인정보를 제공하지 않습니다.</p>
+<table>
+  <tr><th>수탁자</th><th>위탁 업무</th></tr>
+  <tr><td>Google LLC (Firebase)</td>
+      <td>회원 인증(Authentication), 데이터 저장(Cloud Firestore), 서버 기능(Cloud Functions),
+      푸시 알림(Cloud Messaging)</td></tr>
+</table>
+<p>Google Firebase는 해외에 소재한 서버를 이용할 수 있어, 개인정보가 국외(예: 미국)에 저장·처리될
+수 있습니다. Firebase의 개인정보 처리에 관한 사항은
+<a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase 개인정보 보호</a>를
+참고하시기 바랍니다.</p>
+
+<h2>4. 개인정보의 보유 및 파기</h2>
 <ul>
-  <li>회원 식별 및 로그인</li>
-  <li>동아리 보고서 작성 및 관리</li>
-  <li>출석 확인 및 보상 제공</li>
-  <li>대외활동 정보 제공</li>
+  <li>개인정보는 회원 탈퇴 또는 이용자의 삭제 요청 시까지 보유하며, 목적 달성 후 지체 없이 파기합니다.</li>
+  <li>이용자는 앱 내 <strong>“앱 초기화”</strong> 기능(홈 화면 프로필 메뉴)을 통해 언제든지 본인의
+      보고서·출석·리워드·프로필·멘토 가입 정보 등 서버에 저장된 데이터를 스스로 삭제할 수 있습니다.
+      삭제된 데이터는 복구되지 않습니다.</li>
+  <li>관련 법령에 따라 보존 의무가 있는 경우 해당 기간 동안 보관 후 파기합니다.</li>
 </ul>
 
-<h2>3. 개인정보의 보유 및 이용 기간</h2>
-<p>이용자의 개인정보는 서비스 이용 기간 동안 보유하며, 회원 탈퇴 시 지체 없이 파기합니다.</p>
-
-<h2>4. 개인정보의 제3자 제공</h2>
-<p>학과는 이용자의 개인정보를 외부에 제공하지 않습니다. 단, 법령에 의해 요구되는 경우는 예외로 합니다.</p>
-
-<h2>5. 개인정보의 파기</h2>
-<p>보유 기간이 경과하거나 처리 목적이 달성된 경우, 해당 개인정보를 지체 없이 파기합니다.</p>
-
-<h2>6. 개인정보 보호를 위한 기술적 조치</h2>
+<h2>5. 이용자의 권리와 행사 방법</h2>
 <ul>
-  <li>비밀번호는 Firebase Authentication을 통해 암호화 저장</li>
-  <li>데이터 전송 시 SSL/TLS 암호화 적용</li>
-  <li>Firestore 보안 규칙을 통한 접근 제어</li>
+  <li>이용자는 언제든지 자신의 개인정보를 열람·수정할 수 있습니다(프로필/설정 화면).</li>
+  <li>동의 철회 및 삭제는 앱 내 “앱 초기화” 또는 아래 문의처를 통해 요청할 수 있습니다.</li>
+  <li>알림 수신은 기기 설정 또는 앱 내 알림 설정에서 언제든 끌 수 있습니다.</li>
 </ul>
 
-<h2>7. 이용자의 권리</h2>
-<p>이용자는 언제든지 자신의 개인정보를 조회, 수정, 삭제할 수 있으며, 회원 탈퇴를 요청할 수 있습니다.</p>
-
-<h2>8. 연락처</h2>
-<p>개인정보 관련 문의사항은 아래로 연락해 주시기 바랍니다.</p>
+<h2>6. 개인정보의 안전성 확보</h2>
 <ul>
-  <li>이메일: tulmosan@gmail.com</li>
+  <li>모든 통신은 HTTPS/TLS 표준 암호화로 전송됩니다.</li>
+  <li>데이터 접근은 인증된 본인 및 권한 있는 운영진으로 제한되며, 서버 보안 규칙으로 통제됩니다.</li>
+  <li>비밀번호는 복호화 불가능한 형태로 저장됩니다.</li>
 </ul>
 
+<h2>7. 만 14세 미만 아동</h2>
+<p>본 앱은 대학(성인) 이용자를 대상으로 하며, 만 14세 미만 아동의 개인정보를 고의로 수집하지 않습니다.</p>
+
+<h2>8. 개인정보 보호책임자 및 문의처</h2>
+<p>개인정보 처리에 관한 문의·열람·삭제 요청은 아래로 연락 주시기 바랍니다.</p>
+<table>
+  <tr><th>운영</th><td>유한대학교 식품영양학과 학생회</td></tr>
+  <tr><th>문의 이메일</th><td><strong>[운영진 문의 이메일을 입력하세요]</strong></td></tr>
+</table>
+
+<h2>9. 고지의 의무</h2>
+<p>본 방침의 내용이 추가·변경되는 경우 시행일 및 개정 내용을 본 페이지를 통해 공지합니다.</p>
+
+<footer>
+  © 2026 유한대학교 식품영양학과 학생회. 본 앱은 학과 동아리 활동을 위한 비영리 목적으로 운영됩니다.
+</footer>
+</div>
 </body>
 </html>

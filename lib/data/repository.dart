@@ -103,7 +103,7 @@ abstract class AppRepository {
   /// 관리자: 그룹 전체 회원의 RSVP.
   Future<List<Rsvp>> fetchGroupRsvp(String groupId);
 
-  // ── 리워드(더벤티 쿠폰) ──
+  // ── 리워드(빽다방 쿠폰) ──
   /// 리워드 설정/재고(사용코드 + 종목별 남은 수량).
   Future<RewardConfig> fetchRewardConfig();
 

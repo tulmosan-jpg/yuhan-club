@@ -476,7 +476,7 @@ class FirebaseRepository implements AppRepository {
     return result;
   }
 
-  // ── 리워드(더벤티 쿠폰) ──
+  // ── 리워드(빽다방 쿠폰) ──
   DocumentReference<Map<String, dynamic>> get _rewardConfigDoc =>
       _db.collection('config').doc('rewards');
   CollectionReference<Map<String, dynamic>> get _couponsCol =>
