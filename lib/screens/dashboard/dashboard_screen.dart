@@ -70,7 +70,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<_DashboardData> _load() async {
     final repo = context.read<AppRepository>();
     // 그룹과 무관한 조회는 먼저 시작해 겹쳐 로딩(지연 감소).
-    final activitiesF = repo.fetchActivities();
+    // 마감 임박 3개만 소량 조회(전체 571건 로드 방지 → 첫 로딩 가속).
+    final activitiesF = repo.fetchUpcomingActivities(limit: 3);
     final reportsF = repo.fetchReports();
     // 출석은 그룹별. 내 첫 그룹의 출석을 홈 스트릭에 반영.
     final myGroups = await repo.fetchMyGroups();
@@ -913,6 +914,7 @@ class _HomepageLinks extends StatelessWidget {
 
   static const _univUrl = 'https://www.yuhan.ac.kr/index.do';
   static const _deptUrl = 'https://fn.yuhan.ac.kr/index.do';
+  static const _instaUrl = 'https://www.instagram.com/yuhan_food_nutrition';
 
   Future<void> _open(BuildContext context, String url) async {
     final ok = await launchUrl(Uri.parse(url),
@@ -921,6 +923,17 @@ class _HomepageLinks extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(tr(context, 'cannot_open_link'))));
     }
+  }
+
+  /// 인스타그램: 앱이 설치돼 있으면 앱(instagram://)으로, 없으면 웹으로 연다.
+  Future<void> _openInstagram(BuildContext context) async {
+    final appUri = Uri.parse('instagram://user?username=yuhan_food_nutrition');
+    try {
+      if (await canLaunchUrl(appUri) && await launchUrl(appUri)) return;
+    } catch (_) {
+      // 스킴 미등록/미설치 → 웹으로 폴백
+    }
+    if (context.mounted) await _open(context, _instaUrl);
   }
 
   @override
@@ -938,18 +951,83 @@ class _HomepageLinks extends StatelessWidget {
           label: tr(context, 'dept_home'),
           onTap: () => _open(context, _deptUrl),
         ),
+        const SizedBox(height: 10),
+        _LinkTile(
+          iconWidget: const _InstagramIcon(size: 22),
+          label: tr(context, 'dept_insta'),
+          onTap: () => _openInstagram(context),
+        ),
       ],
     );
   }
 }
 
+/// 인스타그램 로고(라인 스타일). 다른 아웃라인 아이콘과 동일한 선 두께,
+/// 인스타그램 브랜드 그라데이션 색으로 그린다.
+class _InstagramIcon extends StatelessWidget {
+  const _InstagramIcon({this.size = 22});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) =>
+      CustomPaint(size: Size.square(size), painter: _InstagramPainter());
+}
+
+class _InstagramPainter extends CustomPainter {
+  static const _gradient = LinearGradient(
+    begin: Alignment.bottomLeft,
+    end: Alignment.topRight,
+    colors: [
+      Color(0xFFFEDA75), // 노랑
+      Color(0xFFFA7E1E), // 주황
+      Color(0xFFD62976), // 마젠타
+      Color(0xFF962FBF), // 보라
+      Color(0xFF4F5BD5), // 파랑
+    ],
+  );
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width;
+    final stroke = s * 0.093; // 다른 아이콘과 비슷한 선 두께(≈2 @22)
+    final shader = _gradient.createShader(Rect.fromLTWH(0, 0, s, s));
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..shader = shader;
+
+    final inset = stroke / 2 + s * 0.03;
+    final body = RRect.fromRectAndRadius(
+      Rect.fromLTWH(inset, inset, s - inset * 2, s - inset * 2),
+      Radius.circular(s * 0.29),
+    );
+    canvas.drawRRect(body, line); // 외곽 둥근 사각형
+    canvas.drawCircle(Offset(s / 2, s / 2), s * 0.21, line); // 렌즈 원
+
+    // 우상단 점(채움)
+    final dot = Paint()
+      ..style = PaintingStyle.fill
+      ..shader = shader;
+    canvas.drawCircle(Offset(s * 0.72, s * 0.285), s * 0.05, dot);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class _LinkTile extends StatelessWidget {
   const _LinkTile({
-    required this.icon,
+    this.icon,
+    this.iconWidget,
     required this.label,
     required this.onTap,
   });
-  final IconData icon;
+  final IconData? icon;
+
+  /// 커스텀 아이콘(예: 인스타그램 로고). 주어지면 [icon] 대신 사용.
+  final Widget? iconWidget;
   final String label;
   final VoidCallback onTap;
 
@@ -969,7 +1047,8 @@ class _LinkTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(icon, size: 22, color: AppTheme.brand600),
+              iconWidget ??
+                  Icon(icon, size: 22, color: AppTheme.brand600),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(label,

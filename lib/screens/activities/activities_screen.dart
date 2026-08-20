@@ -184,8 +184,7 @@ class _TypeBar extends StatelessWidget {
           _chip(tr(context, 'filter_all'),
               selected == null && !foodOnly && !pastOnly, () => onSelected(null)),
           // 식품영양학과 전용 섹션 — 식품·영양 관련만 모아보기
-          _chip(tr(context, 'filter_food'), foodOnly, onFoodSelected,
-              accent: true),
+          _chip(tr(context, 'filter_food'), foodOnly, onFoodSelected),
           // 지난(마감된) 활동 모아보기
           _chip(tr(context, 'filter_past'), pastOnly, onPastSelected),
           ...ActivityType.values.map(

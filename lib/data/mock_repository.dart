@@ -184,6 +184,17 @@ class MockRepository implements AppRepository {
   }
 
   @override
+  Future<List<Activity>> fetchUpcomingActivities({int limit = 3}) async {
+    await _delay();
+    final now = DateTime.now();
+    final list = _activities
+        .where((a) => a.deadline != null && !a.deadline!.isBefore(now))
+        .toList()
+      ..sort((a, b) => a.deadline!.compareTo(b.deadline!));
+    return list.take(limit).toList();
+  }
+
+  @override
   Future<AttendanceSummary> fetchAttendance() async {
     await _delay();
     return AttendanceLogic.summarize(_attendanceDays,

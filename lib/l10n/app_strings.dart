@@ -140,9 +140,10 @@ const Map<String, List<String>> _dict = {
   'closing_soon_section': ['마감 임박 대외활동', 'Closing soon'],
   'see_all': ['전체보기', 'See all'],
   'no_upcoming': ['마감 예정 활동이 없습니다.', 'No upcoming deadlines.'],
-  'links_section': ['바로가기', 'Quick links'],
+  'links_section': ['홈페이지 · SNS', 'Homepage & SNS'],
   'univ_home': ['유한대학교 홈페이지', 'Yuhan University'],
   'dept_home': ['식품영양학과 홈페이지', 'Food & Nutrition Dept.'],
+  'dept_insta': ['식품영양학과 인스타그램', 'Food & Nutrition Instagram'],
   'account': ['계정', 'Account'],
   'logout': ['로그아웃', 'Log out'],
   // 알림 설정

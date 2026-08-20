@@ -127,6 +127,10 @@ class CompositeRepository implements AppRepository {
   Future<void> removeAttendanceDate(DateTime d) => base.removeAttendanceDate(d);
 
   @override
+  Future<List<Activity>> fetchUpcomingActivities({int limit = 3}) =>
+      base.fetchUpcomingActivities(limit: limit);
+
+  @override
   Future<List<Activity>> fetchActivities({ActivityType? type}) async {
     final results = await Future.wait([
       base.fetchActivities(type: type),

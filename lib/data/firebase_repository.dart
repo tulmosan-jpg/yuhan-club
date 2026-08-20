@@ -92,6 +92,18 @@ class FirebaseRepository implements AppRepository {
     return list;
   }
 
+  @override
+  Future<List<Activity>> fetchUpcomingActivities({int limit = 3}) async {
+    // deadline >= now 를 마감 가까운 순으로 limit 개만(단일필드 range+order → 자동 인덱스).
+    final snap = await _db
+        .collection('activities')
+        .where('deadline', isGreaterThanOrEqualTo: Timestamp.now())
+        .orderBy('deadline')
+        .limit(limit)
+        .get();
+    return snap.docs.map(Activity.fromDoc).toList();
+  }
+
   // ── 연속 출석 ──
   CollectionReference<Map<String, dynamic>> get _daysCol =>
       _db.collection('attendance').doc(currentUserId).collection('days');

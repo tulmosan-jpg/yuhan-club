@@ -66,5 +66,10 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- 인스타그램 앱 딥링크(instagram://) 조회 허용 -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="instagram"/>
+        </intent>
     </queries>
 </manifest>

@@ -29,6 +29,10 @@ abstract class AppRepository {
   // ── 대외활동/박람회 ──
   Future<List<Activity>> fetchActivities({ActivityType? type});
 
+  /// 마감 임박(아직 열려 있는) 활동을 마감 가까운 순으로 소량만 조회.
+  /// 홈 대시보드의 '마감 임박' 섹션용 — 전체 로드 없이 빠르게.
+  Future<List<Activity>> fetchUpcomingActivities({int limit = 3});
+
   // ── 연속 출석 ──
   List<RewardTier> get rewardTiers;
   Future<AttendanceSummary> fetchAttendance();
