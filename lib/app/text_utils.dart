@@ -6,8 +6,13 @@ String cleanText(String? raw) {
   if (raw == null || raw.isEmpty) return '';
   var s = raw;
 
-  // 남은 HTML 태그 제거
-  s = s.replaceAll(RegExp(r'<[^>]+>'), ' ');
+  // 줄바꿈성 태그는 개행으로 먼저 변환(원문 줄 구조 보존)한 뒤 나머지 태그 제거
+  s = s.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
+  s = s.replaceAll(
+      RegExp(r'</(p|div|li|ul|ol|h[1-6]|tr|blockquote)\s*>',
+          caseSensitive: false),
+      '\n');
+  s = s.replaceAll(RegExp(r'<[^>]+>'), '');
 
   // 자주 나오는 HTML 엔티티 복원
   const entities = {
@@ -35,19 +40,25 @@ String cleanText(String? raw) {
     return code == null ? m.group(0)! : String.fromCharCode(code);
   });
 
-  // 줄바꿈 주변 공백 제거
-  s = s.replaceAll(RegExp(r'[ \t]*\n[ \t]*'), '\n');
+  s = s.replaceAll(' ', ' '); // non-breaking space
 
-  // 문단(빈 줄로 구분) 단위로 재구성:
-  //  - 문단 내부의 단일 줄바꿈은 문장이 잘린 것이므로 공백으로 합친다
-  //  - 불릿(•, -, · 등)만 있고 내용이 다음 줄에 있던 경우 자연히 "• 내용"으로 붙는다
-  final paragraphs = s
-      .split(RegExp(r'\n{2,}'))
-      .map((p) => p.replaceAll('\n', ' ').replaceAll(RegExp(r'\s+'), ' ').trim())
-      .where((p) => p.isNotEmpty && p != '•' && p != '-' && p != '·')
-      .toList();
-
-  return paragraphs.join('\n\n');
+  // 줄 단위로 정리: 원문 줄바꿈은 그대로 두고, 줄 내부 공백만 축소.
+  //  - 불릿(•, -, · 등)만 있는 줄은 제거
+  //  - 빈 줄이 연속되면 하나로 축소
+  final lines = <String>[];
+  for (final raw in s.split('\n')) {
+    final line = raw.replaceAll(RegExp(r'[ \t]+'), ' ').trim();
+    if (line == '•' || line == '-' || line == '·' || line == '*') continue;
+    if (line.isEmpty && (lines.isEmpty || lines.last.isEmpty)) continue;
+    lines.add(line);
+  }
+  while (lines.isNotEmpty && lines.first.isEmpty) {
+    lines.removeAt(0);
+  }
+  while (lines.isNotEmpty && lines.last.isEmpty) {
+    lines.removeLast();
+  }
+  return lines.join('\n');
 }
 
 /// 목록/미리보기용 한 줄 요약. 줄바꿈을 공백으로 합치고 [max]자로 자른다.
