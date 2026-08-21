@@ -6,6 +6,7 @@ import '../../app/theme.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/group.dart';
+import '../../widgets/app_dialog.dart';
 import 'group_detail_screen.dart';
 
 /// 관리자: 그룹(팀) 생성·목록·열람. 그룹을 열면 그 그룹의 보고서를 본다.
@@ -32,60 +33,26 @@ class _AdminGroupsScreenState extends State<AdminGroupsScreen> {
   }
 
   Future<void> _createGroup() async {
-    final nameCtrl = TextEditingController();
-    final pinCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    final ok = await showDialog<bool>(
+    final r = await showCreateGroupDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(tr(context, 'create_group')),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: nameCtrl,
-                decoration: InputDecoration(labelText: tr(context, 'group_name')),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? tr(context, 'err_name')
-                    : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: pinCtrl,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: tr(context, 'group_pin'),
-                  helperText: tr(context, 'group_pin_hint'),
-                ),
-                validator: (v) => (v == null || v.trim().length != 4)
-                    ? tr(context, 'err_pin4')
-                    : null,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(tr(context, 'cancel'))),
-          FilledButton(
-              onPressed: () {
-                if (formKey.currentState!.validate()) {
-                  Navigator.pop(context, true);
-                }
-              },
-              child: Text(tr(context, 'create_group'))),
-        ],
-      ),
+      title: tr(context, 'create_group'),
+      nameHint: tr(context, 'group_name'),
+      pinHint: tr(context, 'group_pin'),
+      helper: tr(context, 'group_pin_hint'),
+      confirmText: tr(context, 'create_group'),
     );
-    if (ok != true || !mounted) return;
-    await context
-        .read<AppRepository>()
-        .createGroup(nameCtrl.text, pinCtrl.text);
+    if (r == null || !mounted) return;
+    if (r.name.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(tr(context, 'err_name'))));
+      return;
+    }
+    if (r.pin.length != 4) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(tr(context, 'err_pin4'))));
+      return;
+    }
+    await context.read<AppRepository>().createGroup(r.name, r.pin);
     if (!mounted) return;
     setState(_reload);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -93,25 +60,15 @@ class _AdminGroupsScreenState extends State<AdminGroupsScreen> {
   }
 
   Future<void> _deleteGroup(Group g) async {
-    final ok = await showDialog<bool>(
+    final ok = await showConfirmDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(tr(context, 'delete_group')),
-        content: Text('${g.name}\n${tr(context, 'delete_group_body')}'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(tr(context, 'cancel'))),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFE53E3E)),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(tr(context, 'delete')),
-          ),
-        ],
-      ),
+      icon: Icons.delete_outline,
+      destructive: true,
+      title: tr(context, 'delete_group'),
+      message: '${g.name}\n${tr(context, 'delete_group_body')}',
+      confirmText: tr(context, 'delete'),
     );
-    if (ok != true || !mounted) return;
+    if (!ok || !mounted) return;
     await context.read<AppRepository>().deleteGroup(g.id);
     if (!mounted) return;
     setState(_reload);

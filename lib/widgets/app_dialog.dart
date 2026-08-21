@@ -111,6 +111,143 @@ Future<bool> showConfirmDialog({
   return result ?? false;
 }
 
+/// 회색 채움 입력 필드 데코레이션(공용).
+InputDecoration _filledInput(String? hint) => InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+      filled: true,
+      fillColor: const Color(0xFFF1F2F4),
+      counterText: '',
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_btnRadius),
+          borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_btnRadius),
+          borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_btnRadius),
+          borderSide: const BorderSide(color: AppTheme.brand500, width: 1.6)),
+    );
+
+/// 단일 입력 다이얼로그(텍스트/숫자). 확인 시 입력값, 취소 null.
+Future<String?> showInputDialog({
+  required BuildContext context,
+  required String title,
+  String? message,
+  String? hint,
+  String? initialText,
+  required String confirmText,
+  TextInputType? keyboardType,
+  int? maxLength,
+  bool digitsOnly = false,
+  Color? confirmColor,
+}) {
+  final ctrl = TextEditingController(text: initialText ?? '');
+  ctrl.selection = TextSelection.collapsed(offset: ctrl.text.length);
+  return showDialog<String>(
+    context: context,
+    builder: (dctx) => _shell(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 19, fontWeight: FontWeight.bold, color: _title)),
+          if (message != null) ...[
+            const SizedBox(height: 8),
+            Text(message,
+                style: const TextStyle(fontSize: 14, height: 1.5, color: _muted)),
+          ],
+          const SizedBox(height: 16),
+          TextField(
+            controller: ctrl,
+            autofocus: true,
+            keyboardType: keyboardType,
+            maxLength: maxLength,
+            inputFormatters:
+                digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null,
+            style: const TextStyle(fontSize: 16, color: _title),
+            onSubmitted: (v) => Navigator.pop(dctx, v.trim()),
+            decoration: _filledInput(hint),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              _cancelButton(
+                  dctx, tr(dctx, 'cancel'), () => Navigator.pop(dctx, null)),
+              const SizedBox(width: 12),
+              _actionButton(confirmText, confirmColor ?? AppTheme.brand500,
+                  () => Navigator.pop(dctx, ctrl.text.trim())),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// 그룹 만들기: 이름 + 4자리 PIN. 확인 시 (name, pin), 취소 null.
+Future<({String name, String pin})?> showCreateGroupDialog({
+  required BuildContext context,
+  required String title,
+  required String nameHint,
+  required String pinHint,
+  String? helper,
+  required String confirmText,
+}) {
+  final nameCtrl = TextEditingController();
+  final pinCtrl = TextEditingController();
+  return showDialog<({String name, String pin})>(
+    context: context,
+    builder: (dctx) => _shell(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 19, fontWeight: FontWeight.bold, color: _title)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: nameCtrl,
+            autofocus: true,
+            style: const TextStyle(fontSize: 16, color: _title),
+            decoration: _filledInput(nameHint),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: pinCtrl,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: const TextStyle(fontSize: 16, color: _title),
+            decoration: _filledInput(pinHint),
+          ),
+          if (helper != null) ...[
+            const SizedBox(height: 4),
+            Text(helper,
+                style: const TextStyle(fontSize: 12, color: _muted)),
+          ],
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              _cancelButton(
+                  dctx, tr(dctx, 'cancel'), () => Navigator.pop(dctx, null)),
+              const SizedBox(width: 12),
+              _actionButton(confirmText, AppTheme.brand500, () {
+                Navigator.pop(dctx,
+                    (name: nameCtrl.text.trim(), pin: pinCtrl.text.trim()));
+              }),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// 4자리 PIN 입력 다이얼로그. 확인 시 입력값 문자열, 취소면 null.
 Future<String?> showPinDialog({
   required BuildContext context,

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../app/theme.dart';
 import '../../data/auth_service.dart';
 import '../../l10n/app_strings.dart';
+import '../../widgets/app_dialog.dart';
 
 /// 관리자 관리: 새 관리자 추가(Authentication 자동 등록) + 현재 관리자 목록/해제.
 class AdminManageScreen extends StatefulWidget {
@@ -71,25 +72,15 @@ class _AdminManageScreenState extends State<AdminManageScreen> {
   }
 
   Future<void> _removeAdmin(AdminInfo a) async {
-    final ok = await showDialog<bool>(
+    final ok = await showConfirmDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(tr(context, 'remove_admin_title')),
-        content: Text('${a.email}\n${tr(context, 'remove_admin_body')}'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(tr(context, 'cancel'))),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFE53E3E)),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(tr(context, 'delete')),
-          ),
-        ],
-      ),
+      icon: Icons.shield_outlined,
+      destructive: true,
+      title: tr(context, 'remove_admin_title'),
+      message: '${a.email}\n${tr(context, 'remove_admin_body')}',
+      confirmText: tr(context, 'delete'),
     );
-    if (ok != true || !mounted) return;
+    if (!ok || !mounted) return;
     await context.read<AuthService>().removeAdmin(a.uid);
     if (!mounted) return;
     setState(_reload);

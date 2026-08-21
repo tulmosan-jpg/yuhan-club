@@ -9,6 +9,7 @@ import '../../l10n/app_strings.dart';
 import 'admin_member_accounts_screen.dart';
 import '../../models/attendance.dart';
 import '../../models/report.dart';
+import '../../widgets/app_dialog.dart';
 import 'group_reports_screen.dart';
 
 /// 관리자: 그룹 상세 — 보고서 / 출석 / 통계 탭.
@@ -105,39 +106,14 @@ class _GroupAttendanceAdminState extends State<_GroupAttendanceAdmin> {
 
   /// 주제 입력 다이얼로그. 취소 시 null, 확인 시 입력값(빈 문자열 가능).
   Future<String?> _askTopic(DateTime day, {String initial = ''}) {
-    final controller = TextEditingController(text: initial);
-    return showDialog<String>(
+    return showInputDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        titleTextStyle: const TextStyle(
-          fontFamily: 'Pretendard',
-          fontSize: 17,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF18181B),
-        ),
-        title: Text('${DateFormat('M/d (E)', 'ko').format(day)} '
-            '${tr(ctx, 'schedule_topic')}'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 40,
-          style: const TextStyle(fontFamily: 'Pretendard', fontSize: 15),
-          decoration: InputDecoration(
-            hintText: tr(ctx, 'schedule_topic_hint'),
-            hintStyle: TextStyle(
-                fontFamily: 'Pretendard', color: Colors.grey.shade400),
-          ),
-          onSubmitted: (v) => Navigator.pop(ctx, v),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(tr(ctx, 'cancel'))),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, controller.text),
-              child: Text(tr(ctx, 'confirm'))),
-        ],
-      ),
+      title: '${DateFormat('M/d (E)', 'ko').format(day)} '
+          '${tr(context, 'schedule_topic')}',
+      hint: tr(context, 'schedule_topic_hint'),
+      initialText: initial,
+      maxLength: 40,
+      confirmText: tr(context, 'confirm'),
     );
   }
 

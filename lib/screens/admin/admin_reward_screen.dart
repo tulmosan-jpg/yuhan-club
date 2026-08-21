@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/reward.dart';
+import '../../widgets/app_dialog.dart';
 
 const Color _purple = Color(kPaikNavyValue);
 
@@ -65,34 +66,18 @@ class _AdminRewardScreenState extends State<AdminRewardScreen> {
   }
 
   Future<void> _editStock(Drink d, int current) async {
-    final ctrl = TextEditingController(text: '$current');
-    final v = await showDialog<int>(
+    final s = await showInputDialog(
       context: context,
-      builder: (dctx) => AlertDialog(
-        title: Text('${d.name} ${tr(dctx, 'reward_stock')}',
-            style: const TextStyle(
-                fontFamily: 'Pretendard', fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: ctrl,
-          keyboardType: TextInputType.number,
-          autofocus: true,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: InputDecoration(hintText: tr(dctx, 'stock_count')),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dctx),
-              child: Text(tr(dctx, 'cancel'))),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _purple),
-            onPressed: () =>
-                Navigator.pop(dctx, int.tryParse(ctrl.text.trim()) ?? current),
-            child: Text(tr(dctx, 'confirm')),
-          ),
-        ],
-      ),
+      title: '${d.name} ${tr(context, 'reward_stock')}',
+      hint: tr(context, 'stock_count'),
+      initialText: '$current',
+      keyboardType: TextInputType.number,
+      digitsOnly: true,
+      confirmText: tr(context, 'confirm'),
+      confirmColor: _purple,
     );
-    if (v == null || !mounted) return;
+    if (s == null || !mounted) return;
+    final v = int.tryParse(s.trim()) ?? current;
     await context.read<AppRepository>().setDrinkStock(d.id, v);
     if (!mounted) return;
     _reload();
