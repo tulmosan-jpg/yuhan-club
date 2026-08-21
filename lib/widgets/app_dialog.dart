@@ -248,12 +248,65 @@ Future<({String name, String pin})?> showCreateGroupDialog({
   );
 }
 
+/// 안내 다이얼로그(버튼 1개). 아이콘/이모지 배지 선택.
+Future<void> showInfoDialog({
+  required BuildContext context,
+  required String title,
+  required String message,
+  required String confirmText,
+  IconData? icon,
+  String? emoji,
+  Color? color,
+}) {
+  final c = color ?? AppTheme.brand500;
+  return showDialog<void>(
+    context: context,
+    builder: (dctx) => _shell(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (emoji != null) ...[
+            Text(emoji, style: const TextStyle(fontSize: 40)),
+            const SizedBox(height: 14),
+          ] else if (icon != null) ...[
+            _iconBadge(icon, c),
+            const SizedBox(height: 18),
+          ],
+          Text(title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 20, fontWeight: FontWeight.bold, color: _title)),
+          const SizedBox(height: 8),
+          Text(message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 15, height: 1.5, color: _muted)),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => Navigator.pop(dctx),
+              style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                  backgroundColor: c,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(_btnRadius))),
+              child: Text(confirmText,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// 4자리 PIN 입력 다이얼로그. 확인 시 입력값 문자열, 취소면 null.
 Future<String?> showPinDialog({
   required BuildContext context,
   required String title,
   required String message,
   required String confirmText,
+  Color? confirmColor,
 }) {
   final ctrl = TextEditingController();
   return showDialog<String>(
@@ -307,7 +360,7 @@ Future<String?> showPinDialog({
               _cancelButton(dctx, tr(dctx, 'cancel'),
                   () => Navigator.pop(dctx, null)),
               const SizedBox(width: 12),
-              _actionButton(confirmText, AppTheme.brand500,
+              _actionButton(confirmText, confirmColor ?? AppTheme.brand500,
                   () => Navigator.pop(dctx, ctrl.text.trim())),
             ],
           ),

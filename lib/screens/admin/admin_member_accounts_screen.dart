@@ -6,6 +6,7 @@ import '../../app/theme.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/group.dart';
+import '../../widgets/app_dialog.dart';
 
 /// 관리자: 그룹 멤버의 로그인 아이디(이메일) 확인 + 임시 비밀번호 발급.
 /// 멘티가 아이디/비밀번호를 잊었을 때 멘토(관리자)가 찾아준다.
@@ -44,26 +45,14 @@ class _AdminMemberAccountsScreenState extends State<AdminMemberAccountsScreen> {
   }
 
   Future<void> _resetPassword(MemberAccount m) async {
-    final ok = await showDialog<bool>(
+    final ok = await showConfirmDialog(
       context: context,
-      builder: (dctx) => AlertDialog(
-        title: Text(tr(dctx, 'reset_pw_title'),
-            style: const TextStyle(
-                fontFamily: 'Pretendard', fontWeight: FontWeight.bold)),
-        content: Text(tr(dctx, 'reset_pw_body', {'name': m.name}),
-            style: const TextStyle(fontFamily: 'Pretendard', height: 1.5)),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dctx, false),
-              child: Text(tr(dctx, 'cancel'))),
-          FilledButton(
-            onPressed: () => Navigator.pop(dctx, true),
-            child: Text(tr(dctx, 'reset_pw_confirm')),
-          ),
-        ],
-      ),
+      icon: Icons.lock_reset,
+      title: tr(context, 'reset_pw_title'),
+      message: tr(context, 'reset_pw_body', {'name': m.name}),
+      confirmText: tr(context, 'reset_pw_confirm'),
     );
-    if (ok != true || !mounted) return;
+    if (!ok || !mounted) return;
     setState(() => _busy = true);
     try {
       final res =

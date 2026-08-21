@@ -7,6 +7,7 @@ import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/attendance.dart';
 import '../../models/reward.dart';
+import '../../widgets/app_dialog.dart';
 
 const Color _purple = Color(kPaikNavyValue);
 
@@ -101,57 +102,18 @@ class _RewardSectionState extends State<RewardSection> {
   }
 
   Future<void> _redeem(Coupon c) async {
-    final codeCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
+    final code = await showPinDialog(
       context: context,
-      builder: (dctx) => AlertDialog(
-        title: Text(tr(dctx, 'redeem_title'),
-            style: const TextStyle(
-                fontFamily: 'Pretendard', fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(tr(dctx, 'redeem_desc'),
-                style: const TextStyle(
-                    fontFamily: 'Pretendard', fontSize: 13)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: codeCtrl,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              obscureText: true,
-              autofocus: true,
-              style: const TextStyle(
-                  fontFamily: 'Pretendard',
-                  fontSize: 22,
-                  letterSpacing: 8,
-                  fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-              decoration: const InputDecoration(
-                counterText: '',
-                hintText: '••••',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dctx, false),
-              child: Text(tr(dctx, 'cancel'))),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _purple),
-            onPressed: () => Navigator.pop(dctx, true),
-            child: Text(tr(dctx, 'redeem_confirm')),
-          ),
-        ],
-      ),
+      title: tr(context, 'redeem_title'),
+      message: tr(context, 'redeem_desc'),
+      confirmText: tr(context, 'redeem_confirm'),
+      confirmColor: _purple,
     );
-    if (ok != true || !mounted) return;
+    if (code == null || !mounted) return;
     setState(() => _busy = true);
     final repo = context.read<AppRepository>();
     try {
-      final success = await repo.redeemCoupon(c.id, codeCtrl.text.trim());
+      final success = await repo.redeemCoupon(c.id, code.trim());
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(tr(

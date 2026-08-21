@@ -6,6 +6,7 @@ import '../../app/theme.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/report.dart';
+import '../../widgets/app_dialog.dart';
 import '../reports/report_detail_screen.dart';
 
 /// 관리자: 특정 그룹의 보고서 목록(읽기 전용 + 삭제).
@@ -37,25 +38,15 @@ class _GroupReportsScreenState extends State<GroupReportsScreen> {
   }
 
   Future<bool> _delete(MentoringReport r) async {
-    final ok = await showDialog<bool>(
+    final ok = await showConfirmDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(tr(context, 'delete_report_title')),
-        content: Text(tr(context, 'delete_report_body')),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(tr(context, 'cancel'))),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFE53E3E)),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(tr(context, 'delete')),
-          ),
-        ],
-      ),
+      icon: Icons.delete_outline,
+      destructive: true,
+      title: tr(context, 'delete_report_title'),
+      message: tr(context, 'delete_report_body'),
+      confirmText: tr(context, 'delete'),
     );
-    if (ok != true || !mounted) return false;
+    if (!ok || !mounted) return false;
     await context.read<AppRepository>().deleteReport(r.id);
     if (!mounted) return true;
     setState(_reload);

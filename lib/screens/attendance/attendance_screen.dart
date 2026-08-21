@@ -215,23 +215,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   void _showRewardDialog() {
-    showDialog(
+    showInfoDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        icon: const Text('🎉', style: TextStyle(fontSize: 40)),
-        title: Text(tr(context, 'reward_ready_title'),
-            style: const TextStyle(
-                fontFamily: 'Pretendard', fontWeight: FontWeight.bold)),
-        content: Text(tr(context, 'reward_ready_body',
-            {'n': '${AttendanceLogic.coffeeStreak}'}),
-            style: const TextStyle(fontFamily: 'Pretendard')),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(tr(context, 'ok_great')),
-          ),
-        ],
-      ),
+      emoji: '🎉',
+      title: tr(context, 'reward_ready_title'),
+      message: tr(context, 'reward_ready_body',
+          {'n': '${AttendanceLogic.coffeeStreak}'}),
+      confirmText: tr(context, 'ok_great'),
     );
   }
 
