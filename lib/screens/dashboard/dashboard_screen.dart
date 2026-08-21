@@ -11,6 +11,7 @@ import '../../app/app_config.dart';
 import '../../app/theme.dart';
 import '../../data/auth_service.dart';
 import '../../data/notification_service.dart';
+import '../../data/update_service.dart';
 import '../../data/profile_service.dart';
 import '../../data/repository.dart';
 import '../../data/attendance_logic.dart';
@@ -18,6 +19,7 @@ import '../../l10n/app_strings.dart';
 import '../../l10n/locale_provider.dart';
 import '../settings/notification_settings_screen.dart';
 import '../../models/activity.dart';
+import '../activities/activity_detail_screen.dart';
 import '../../models/attendance.dart';
 import '../../models/report.dart';
 
@@ -53,6 +55,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!AppConfig.useMock) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         NotificationService.instance.requestPermission();
+        // 새 버전 있으면 업데이트 안내.
+        UpdateService.maybePrompt(context);
       });
     }
   }
@@ -198,7 +202,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _ActivityTile(
                           activity: a,
-                          onTap: () => widget.onNavigate?.call(2),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ActivityDetailScreen(activity: a),
+                            ),
+                          ),
                         ),
                       )),
                 const SizedBox(height: 28),

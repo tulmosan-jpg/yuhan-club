@@ -90,10 +90,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _future = repo.fetchMyGroupAttendance(gid);
     repo.fetchGroupSchedule(gid).then((entries) {
       if (!mounted) return;
+      // 지난 일정은 숨기고 오늘 이후 일정만 노출(재가입 멤버가 과거 일정을
+      // 보지 않도록). 출석 스트릭 계산은 서버 데이터 기준이라 영향 없음.
+      final today = AttendanceRecord.dayOf(DateTime.now());
+      final future = entries.where((e) => !e.date.isBefore(today)).toList();
       setState(() {
-        _dates = entries.map((e) => e.date).toList();
+        _dates = future.map((e) => e.date).toList();
         _topics = {
-          for (final e in entries)
+          for (final e in future)
             AttendanceRecord.keyOf(e.date): e.topic,
         };
       });
