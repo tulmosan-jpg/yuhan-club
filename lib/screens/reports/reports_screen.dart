@@ -7,6 +7,7 @@ import '../../data/auth_service.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/report.dart';
+import '../../widgets/app_dialog.dart';
 import '../attendance/attendance_screen.dart';
 import 'report_detail_screen.dart';
 import 'report_editor_screen.dart';
@@ -88,25 +89,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<bool> _deleteReport(MentoringReport report) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showConfirmDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(tr(context, 'delete_report_title')),
-        content: Text(tr(context, 'delete_report_body')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(tr(context, 'cancel')),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE53E3E)),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(tr(context, 'delete')),
-          ),
-        ],
-      ),
+      icon: Icons.delete_outline,
+      destructive: true,
+      title: tr(context, 'delete_report_title'),
+      message: tr(context, 'delete_report_body'),
+      confirmText: tr(context, 'delete'),
     );
-    if (confirmed != true || !mounted) return false;
+    if (!confirmed || !mounted) return false;
     await context.read<AppRepository>().deleteReport(report.id);
     if (!mounted) return true;
     setState(_reload);

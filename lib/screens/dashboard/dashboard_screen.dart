@@ -12,6 +12,7 @@ import '../../app/theme.dart';
 import '../../data/auth_service.dart';
 import '../../data/notification_service.dart';
 import '../../data/update_service.dart';
+import '../../widgets/app_dialog.dart';
 import '../../data/profile_service.dart';
 import '../../data/repository.dart';
 import '../../data/attendance_logic.dart';
@@ -278,30 +279,15 @@ class _GreetingState extends State<_Greeting> {
 
   /// 앱 초기화: 내 서버 데이터 삭제 + 멘토 탈퇴 + 로컬 설정 초기화 + 로그아웃.
   Future<void> _resetApp() async {
-    final confirm = await showDialog<bool>(
+    final confirm = await showConfirmDialog(
       context: context,
-      builder: (dctx) => AlertDialog(
-        icon: const Icon(Icons.warning_amber_rounded,
-            color: Color(0xFFE53E3E), size: 36),
-        title: Text(tr(dctx, 'reset_app'),
-            style: const TextStyle(
-                fontFamily: 'Pretendard', fontWeight: FontWeight.bold)),
-        content: Text(tr(dctx, 'reset_app_warn'),
-            style: const TextStyle(fontFamily: 'Pretendard', height: 1.5)),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dctx, false),
-              child: Text(tr(dctx, 'cancel'))),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFE53E3E)),
-            onPressed: () => Navigator.pop(dctx, true),
-            child: Text(tr(dctx, 'reset_confirm')),
-          ),
-        ],
-      ),
+      icon: Icons.warning_amber_rounded,
+      destructive: true,
+      title: tr(context, 'reset_app'),
+      message: tr(context, 'reset_app_warn'),
+      confirmText: tr(context, 'reset_confirm'),
     );
-    if (confirm != true || !mounted) return;
+    if (!confirm || !mounted) return;
     setState(() => _busy = true);
     try {
       await context.read<AppRepository>().resetMyAccount();

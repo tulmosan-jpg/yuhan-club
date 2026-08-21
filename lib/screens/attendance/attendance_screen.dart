@@ -11,6 +11,7 @@ import '../../l10n/app_strings.dart';
 import '../rewards/reward_section.dart';
 import '../../models/attendance.dart';
 import '../../models/group.dart';
+import '../../widgets/app_dialog.dart';
 
 /// 그룹별 출석 화면. 내 그룹의 출석일에만 출석 가능.
 class AttendanceScreen extends StatefulWidget {
@@ -397,52 +398,13 @@ class _MentorPickerState extends State<_MentorPicker> {
   }
 
   Future<void> _join(GroupInfo g) async {
-    final pinCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
+    final pin = await showPinDialog(
       context: context,
-      builder: (dctx) => AlertDialog(
-        title: Text(g.name,
-            style: const TextStyle(
-                fontFamily: 'Pretendard', fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(tr(dctx, 'mentor_pin_desc'),
-                style: const TextStyle(fontFamily: 'Pretendard', fontSize: 13)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: pinCtrl,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              obscureText: true,
-              autofocus: true,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontFamily: 'Pretendard',
-                  fontSize: 22,
-                  letterSpacing: 8,
-                  fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
-                  counterText: '', hintText: '••••'),
-              onSubmitted: (_) => Navigator.pop(dctx, true),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dctx, false),
-              child: Text(tr(dctx, 'cancel'))),
-          FilledButton(
-            onPressed: () => Navigator.pop(dctx, true),
-            child: Text(tr(dctx, 'mentor_join')),
-          ),
-        ],
-      ),
+      title: g.name,
+      message: tr(context, 'mentor_pin_desc'),
+      confirmText: tr(context, 'mentor_join'),
     );
-    if (ok != true || !mounted) return;
-    final pin = pinCtrl.text.trim();
+    if (pin == null || !mounted) return;
     if (pin.length != 4) {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(tr(context, 'mentor_pin_4'))));
