@@ -16,11 +16,10 @@ import 'package:yuhan_club/app/theme.dart';
 import 'package:yuhan_club/data/mock_repository.dart';
 import 'package:yuhan_club/data/repository.dart';
 import 'package:yuhan_club/l10n/locale_provider.dart';
-import 'package:yuhan_club/models/attendance.dart';
 import 'package:yuhan_club/screens/attendance/attendance_screen.dart';
 import 'package:yuhan_club/screens/certifications/certifications_screen.dart';
 import 'package:yuhan_club/screens/activities/activities_screen.dart';
-import 'package:yuhan_club/screens/rewards/reward_section.dart';
+import 'package:yuhan_club/screens/rewards/rewards_screen.dart';
 
 Future<void> _loadFonts() async {
   final manifest = json.decode(
@@ -78,6 +77,19 @@ void main() {
     await tester.pumpWidget(wrap(screen));
     await tester.pump();
     await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 900)));
+    // 에셋 이미지(빽다방 로고/음료)는 runAsync 안에서 프리캐시해야 렌더된다.
+    await tester.runAsync(() async {
+      final ctx = tester.element(find.byType(MaterialApp).first);
+      for (final a in const [
+        'assets/images/paikdabang/logo.png',
+        'assets/images/paikdabang/peachtea.png',
+        'assets/images/paikdabang/americano.png',
+      ]) {
+        try {
+          await precacheImage(AssetImage(a), ctx);
+        } catch (_) {}
+      }
+    });
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 400));
     await capture(tester, name);
@@ -94,24 +106,7 @@ void main() {
   });
 
   testWidgets('03 리워드', (tester) async {
-    final summary = AttendanceSummary(
-      currentStreak: 2,
-      totalDays: 2,
-      checkedInToday: true,
-      recentDays: [DateTime(2026, 8, 18)],
-    );
-    await shoot(
-        tester,
-        '03_reward',
-        Scaffold(
-          appBar: AppBar(
-              title: const Text('리워드',
-                  style: TextStyle(fontWeight: FontWeight.bold))),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: RewardSection(summary: summary),
-          ),
-        ));
+    await shoot(tester, '03_reward', const RewardsScreen());
     addTearDown(() => tester.binding.setSurfaceSize(null));
   });
 

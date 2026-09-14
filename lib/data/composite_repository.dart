@@ -24,7 +24,6 @@ class CompositeRepository implements AppRepository {
   String get currentUserName => base.currentUserName;
 
   @override
-  List<RewardTier> get rewardTiers => base.rewardTiers;
 
   @override
   Future<List<MentoringReport>> fetchReports() => base.fetchReports();
@@ -98,11 +97,7 @@ class CompositeRepository implements AppRepository {
   @override
   Future<List<Coupon>> fetchAllCoupons() => base.fetchAllCoupons();
   @override
-  Future<int> fetchAvailableCoupons(AttendanceSummary s) =>
-      base.fetchAvailableCoupons(s);
-  @override
-  Future<Coupon> claimCoupon(String drinkId, AttendanceSummary s) =>
-      base.claimCoupon(drinkId, s);
+  Future<Coupon> claimCoupon(String drinkId) => base.claimCoupon(drinkId);
   @override
   Future<bool> redeemCoupon(String couponId, String code) =>
       base.redeemCoupon(couponId, code);

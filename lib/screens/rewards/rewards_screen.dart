@@ -2,42 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../data/attendance_logic.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
-import '../../models/attendance.dart';
+import '../../models/group.dart';
 import '../../models/reward.dart';
 import '../../widgets/app_dialog.dart';
 
 const Color _purple = Color(kPaikNavyValue);
 
-/// 출석 화면에 들어가는 빽다방 리워드 섹션.
-/// 연속 출석 2회당 음료 쿠폰 1개. 매장(부천역곡역북부점) 직원 코드로 사용 처리.
-class RewardSection extends StatefulWidget {
-  const RewardSection({super.key, required this.summary});
-  final AttendanceSummary summary;
+/// 리워드 탭 화면(출석과 무관).
+///
+/// 발급 규칙: 하루 1개, 사용하지 않은 쿠폰이 있으면 새로 발급 불가.
+/// 실제 검증은 서버(claimCoupon Cloud Function)에서 수행하고,
+/// 화면은 내 쿠폰 목록으로 같은 규칙을 계산해 상태를 보여준다.
+class RewardsScreen extends StatefulWidget {
+  const RewardsScreen({super.key, this.refresh});
+
+  /// 탭이 보일 때마다 값이 바뀌어 다시 로드하게 하는 신호.
+  final ValueNotifier<int>? refresh;
 
   @override
-  State<RewardSection> createState() => _RewardSectionState();
+  State<RewardsScreen> createState() => _RewardsScreenState();
 }
 
-class _RewardSectionState extends State<RewardSection> {
+class _RewardsScreenState extends State<RewardsScreen> {
   RewardConfig? _config;
-  int _available = 0;
   List<Coupon> _coupons = [];
+  List<GroupInfo> _myGroups = [];
   bool _loading = true;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
+    widget.refresh?.addListener(_load);
     _load();
   }
 
   @override
-  void didUpdateWidget(RewardSection old) {
-    super.didUpdateWidget(old);
-    if (old.summary.currentStreak != widget.summary.currentStreak) _load();
+  void dispose() {
+    widget.refresh?.removeListener(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -45,20 +50,22 @@ class _RewardSectionState extends State<RewardSection> {
     try {
       final results = await Future.wait([
         repo.fetchRewardConfig(),
-        repo.fetchAvailableCoupons(widget.summary),
         repo.fetchMyCoupons(),
+        repo.fetchMyGroups(),
       ]);
       if (!mounted) return;
       setState(() {
         _config = results[0] as RewardConfig;
-        _available = results[1] as int;
-        _coupons = results[2] as List<Coupon>;
+        _coupons = results[1] as List<Coupon>;
+        _myGroups = results[2] as List<GroupInfo>;
         _loading = false;
       });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  CouponStatus get _status => couponStatusOf(_coupons);
 
   Future<void> _openClaimSheet() async {
     final cfg = _config;
@@ -80,22 +87,24 @@ class _RewardSectionState extends State<RewardSection> {
     setState(() => _busy = true);
     final repo = context.read<AppRepository>();
     try {
-      await repo.claimCoupon(drinkId, widget.summary);
+      await repo.claimCoupon(drinkId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(tr(context, 'coupon_issued'))));
       await _load();
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().contains('resource-exhausted') ||
-              e.toString().contains('sold_out')
-          ? tr(context, 'coupon_sold_out')
-          : e.toString().contains('failed-precondition') ||
-                  e.toString().contains('not_eligible')
-              ? tr(context, 'coupon_not_eligible')
-              : tr(context, 'coupon_failed');
+      final s = e.toString();
+      final msg = s.contains('unused_coupon')
+          ? tr(context, 'reward_has_unused')
+          : s.contains('daily_limit')
+              ? tr(context, 'reward_claimed_today')
+              : s.contains('resource-exhausted') || s.contains('sold_out')
+                  ? tr(context, 'coupon_sold_out')
+                  : tr(context, 'coupon_failed');
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(msg)));
+      await _load();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -126,15 +135,33 @@ class _RewardSectionState extends State<RewardSection> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const SizedBox(
-        height: 80,
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(tr(context, 'rewards_appbar'),
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                children: [
+                  _MemberBadgeCard(isClubMember: _myGroups.isNotEmpty),
+                  const SizedBox(height: 14),
+                  _buildRewardCard(context),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildRewardCard(BuildContext context) {
     final cfg = _config;
     final active = _coupons.where((c) => !c.used).toList();
     final used = _coupons.where((c) => c.used).toList();
+    final status = _status;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -159,8 +186,8 @@ class _RewardSectionState extends State<RewardSection> {
               style: TextStyle(fontSize: 12.5, color: Colors.grey.shade500)),
           const SizedBox(height: 14),
 
-          // 발급 버튼(받을 수 있는 쿠폰이 있을 때).
-          if (_available > 0)
+          // 발급 버튼 / 상태 안내.
+          if (status == CouponStatus.canClaim)
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -168,23 +195,26 @@ class _RewardSectionState extends State<RewardSection> {
                 style: FilledButton.styleFrom(
                     backgroundColor: _purple,
                     minimumSize: const Size.fromHeight(48)),
-                icon: const Icon(Icons.card_giftcard, size: 20),
-                label: Text(
-                    tr(context, 'reward_claim_n', {'n': '$_available'}),
+                icon: const Icon(Icons.local_cafe, size: 20),
+                label: Text(tr(context, 'reward_claim_today'),
                     style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             )
           else
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
               decoration: BoxDecoration(
                 color: const Color(0xFFF7F5FA),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                tr(context, 'reward_none_yet',
-                    {'n': '${AttendanceLogic.coffeeStreak}'}),
+                tr(
+                    context,
+                    status == CouponStatus.hasUnused
+                        ? 'reward_has_unused'
+                        : 'reward_claimed_today'),
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
               ),
@@ -257,6 +287,53 @@ class _RewardSectionState extends State<RewardSection> {
         'peachtea' => '복숭아 아이스티',
         _ => '아메리카노',
       };
+}
+
+// ── 회원 구분 배지(동아리원/일반학생 — 멘토링 그룹 소속 여부로 자동) ──
+class _MemberBadgeCard extends StatelessWidget {
+  const _MemberBadgeCard({required this.isClubMember});
+  final bool isClubMember;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isClubMember ? _purple : Colors.grey.shade600;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x0F000000)),
+      ),
+      child: Row(
+        children: [
+          Icon(isClubMember ? Icons.verified : Icons.school_outlined,
+              size: 20, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              tr(context,
+                  isClubMember ? 'member_club_desc' : 'member_general_desc'),
+              style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: isClubMember
+                  ? _purple.withValues(alpha: 0.08)
+                  : const Color(0xFFF2F2F5),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              tr(context, isClubMember ? 'member_club' : 'member_general'),
+              style: TextStyle(
+                  fontSize: 11.5, fontWeight: FontWeight.bold, color: color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── 음료 선택 바텀시트 ──────────────────────────────────────────

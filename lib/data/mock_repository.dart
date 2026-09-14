@@ -13,9 +13,6 @@ class MockRepository implements AppRepository {
   @override
   String get currentUserName => '홍길동';
 
-  @override
-  List<RewardTier> get rewardTiers => AttendanceLogic.defaultTiers;
-
   final List<MentoringReport> _reports = [
     MentoringReport(
       id: 'r1',
@@ -428,8 +425,6 @@ class MockRepository implements AppRepository {
   String _rewardCode = '1234';
   final Map<String, int> _stock = {...RewardConfig.defaultStock};
   final List<Coupon> _coupons = [];
-  int _rewardUnits = 0;
-  int _rewardSnapStreak = 0;
 
   @override
   Future<RewardConfig> fetchRewardConfig() async {
@@ -462,28 +457,22 @@ class MockRepository implements AppRepository {
   }
 
   @override
-  Future<int> fetchAvailableCoupons(AttendanceSummary summary) async {
-    final earned = summary.currentStreak ~/ AttendanceLogic.coffeeStreak;
-    final claimed =
-        summary.currentStreak >= _rewardSnapStreak ? _rewardUnits : 0;
-    final a = earned - claimed;
-    return a < 0 ? 0 : a;
-  }
-
-  @override
-  Future<Coupon> claimCoupon(String drinkId, AttendanceSummary summary) async {
+  Future<Coupon> claimCoupon(String drinkId) async {
     await _delay();
     final drink = drinkById(drinkId);
     if (drink == null) throw Exception('invalid_drink');
-    final earned = summary.currentStreak ~/ AttendanceLogic.coffeeStreak;
-    final claimed =
-        summary.currentStreak >= _rewardSnapStreak ? _rewardUnits : 0;
-    if (earned - claimed < 1) throw Exception('not_eligible');
+    // 일일 1개 + 미사용 쿠폰 없음(서버 규칙과 동일하게 데모에서도 검증).
+    switch (couponStatusOf(_coupons)) {
+      case CouponStatus.hasUnused:
+        throw Exception('failed-precondition:unused_coupon');
+      case CouponStatus.claimedToday:
+        throw Exception('failed-precondition:daily_limit');
+      case CouponStatus.canClaim:
+        break;
+    }
     if ((_stock[drinkId] ?? 0) <= 0) throw Exception('sold_out');
     // 재고는 쿠폰을 '받는(발급)' 시점에 차감한다.
     _stock[drinkId] = (_stock[drinkId] ?? 0) - 1;
-    _rewardUnits = claimed + 1;
-    _rewardSnapStreak = summary.currentStreak;
     final c = Coupon(
       id: 'c${_coupons.length + 1}',
       userId: currentUserId,
@@ -541,8 +530,6 @@ class MockRepository implements AppRepository {
     _myGroupIds.clear();
     _groupMine.clear();
     _attendanceDays.clear();
-    _rewardUnits = 0;
-    _rewardSnapStreak = 0;
   }
 
   Future<void> _delay() =>

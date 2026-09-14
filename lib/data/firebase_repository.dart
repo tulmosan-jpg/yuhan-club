@@ -33,9 +33,6 @@ class FirebaseRepository implements AppRepository {
   @override
   String get currentUserName => _auth.currentUser?.displayName ?? '학생';
 
-  @override
-  List<RewardTier> get rewardTiers => AttendanceLogic.defaultTiers;
-
   // ── 멘토-멘티 보고서 ──
   @override
   Future<List<MentoringReport>> fetchReports() async {
@@ -554,22 +551,8 @@ class FirebaseRepository implements AppRepository {
   }
 
   @override
-  Future<int> fetchAvailableCoupons(AttendanceSummary summary) async {
-    final streak = summary.currentStreak;
-    final earned = streak ~/ AttendanceLogic.coffeeStreak;
-    final userSnap = await _db.collection('users').doc(currentUserId).get();
-    final data = userSnap.data() ?? {};
-    final rewardUnits = (data['rewardUnits'] as num?)?.toInt() ?? 0;
-    final snapStreak = (data['rewardStreakSnapshot'] as num?)?.toInt() ?? 0;
-    // 스트릭이 마지막 발급 시점보다 낮아졌으면 런이 끊긴 것 → 이번 런 발급 0.
-    final claimed = streak >= snapStreak ? rewardUnits : 0;
-    final available = earned - claimed;
-    return available < 0 ? 0 : available;
-  }
-
-  @override
-  Future<Coupon> claimCoupon(String drinkId, AttendanceSummary summary) async {
-    // 발급은 서버(Cloud Functions)에서 자격/재고를 검증하고 처리.
+  Future<Coupon> claimCoupon(String drinkId) async {
+    // 발급은 서버(Cloud Functions)에서 규칙(일일 1개·미사용 없음)/재고를 검증.
     final callable = _functions.httpsCallable('claimCoupon');
     try {
       final res = await callable.call({'drinkId': drinkId});
@@ -577,7 +560,8 @@ class FirebaseRepository implements AppRepository {
       final saved = await _couponsCol.doc(couponId).get();
       return _couponFromDoc(saved);
     } on FirebaseFunctionsException catch (e) {
-      throw Exception(e.code); // failed-precondition / resource-exhausted 등
+      // failed-precondition(unused_coupon/daily_limit) / resource-exhausted 등
+      throw Exception('${e.code}:${e.message ?? ''}');
     }
   }
 

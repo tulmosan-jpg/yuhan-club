@@ -82,6 +82,24 @@ class Coupon {
   });
 }
 
+/// 새 쿠폰 발급 가능 여부. 규칙: 하루 1개, 미사용 쿠폰이 있으면 발급 불가.
+enum CouponStatus { canClaim, hasUnused, claimedToday }
+
+/// 내 쿠폰 목록으로 현재 발급 가능 상태를 계산(서버 규칙과 동일 기준).
+CouponStatus couponStatusOf(List<Coupon> coupons) {
+  final now = DateTime.now();
+  for (final c in coupons) {
+    if (!c.used) return CouponStatus.hasUnused;
+  }
+  for (final c in coupons) {
+    final d = c.issuedAt;
+    if (d.year == now.year && d.month == now.month && d.day == now.day) {
+      return CouponStatus.claimedToday;
+    }
+  }
+  return CouponStatus.canClaim;
+}
+
 /// 리워드 설정/재고 현황(설정 문서 + 종목별 남은 수량).
 class RewardConfig {
   final String code; // 직원용 사용완료 코드(4자리). 비어 있으면 미설정.

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 import '../../app/theme.dart';
-import '../../data/attendance_logic.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/attendance.dart';
@@ -205,7 +204,6 @@ class _MemberCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = member.summary;
-    final reached = s.currentStreak >= AttendanceLogic.coffeeStreak;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -248,14 +246,6 @@ class _MemberCard extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF18181B))),
                     ),
-                    if (reached) ...[
-                      const SizedBox(width: 6),
-                      Text(tr(context, 'reward_reached_badge'),
-                          style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFD97706))),
-                    ],
                   ],
                 ),
                 const SizedBox(height: 6),

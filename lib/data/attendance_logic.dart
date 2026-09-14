@@ -2,16 +2,8 @@ import '../models/attendance.dart';
 
 /// 출석 날짜 목록으로부터 스트릭/요약을 계산하는 공용 로직.
 class AttendanceLogic {
-  /// 음료 리워드를 받기 위한 연속 출석 횟수.
-  static const int coffeeStreak = 2;
-
-  /// 스트릭 트랙에 표시할 칸 수(보상 기준과 별개로 시각적 길이 유지).
+  /// 스트릭 트랙에 표시할 칸 수(시각적 길이 유지).
   static const int streakTrackDays = 5;
-
-  /// 보상 단계 (빽다방 음료 쿠폰).
-  static const List<RewardTier> defaultTiers = [
-    RewardTier(coffeeStreak, '빽다방 음료 쿠폰'),
-  ];
 
   /// [days]는 출석한 날짜들(자정 정규화 권장).
   ///

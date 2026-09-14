@@ -8,17 +8,13 @@ import '../../app/theme.dart';
 import '../../data/repository.dart';
 import '../../data/attendance_logic.dart';
 import '../../l10n/app_strings.dart';
-import '../rewards/reward_section.dart';
 import '../../models/attendance.dart';
 import '../../models/group.dart';
 import '../../widgets/app_dialog.dart';
 
 /// 그룹별 출석 화면. 내 그룹의 출석일에만 출석 가능.
 class AttendanceScreen extends StatefulWidget {
-  const AttendanceScreen({super.key, this.rewardScroll, this.groupsRefresh});
-
-  /// 홈에서 리워드 노드를 누르면 값이 바뀌며 리워드 섹션으로 스크롤한다.
-  final ValueNotifier<int>? rewardScroll;
+  const AttendanceScreen({super.key, this.groupsRefresh});
 
   /// 다른 화면(보고서 흐름 등)에서 멘토에 가입/변경하면 값이 바뀌며
   /// 출석 화면의 그룹 목록을 다시 불러온다.
@@ -44,28 +40,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   void initState() {
     super.initState();
     _loadGroups();
-    widget.rewardScroll?.addListener(_scrollToReward);
     widget.groupsRefresh?.addListener(_loadGroups);
   }
 
   @override
   void dispose() {
-    widget.rewardScroll?.removeListener(_scrollToReward);
     widget.groupsRefresh?.removeListener(_loadGroups);
     _scrollController.dispose();
     super.dispose();
-  }
-
-  /// 리워드 섹션(페이지 하단부)으로 바로 스크롤(첫 프레임 이후).
-  void _scrollToReward() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.easeInOut,
-      );
-    });
   }
 
   Future<void> _loadGroups() async {
@@ -197,16 +179,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(tr(context, 'already_checked'))));
       } else {
-        final reached = summary.currentStreak == AttendanceLogic.coffeeStreak;
-        if (reached) {
-          _showRewardDialog();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(tr(context, 'checkin_success',
-                    {'n': '${summary.currentStreak}'}))),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(tr(context, 'checkin_success',
+                  {'n': '${summary.currentStreak}'}))),
+        );
       }
       setState(_reload);
     } finally {
@@ -214,20 +191,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  void _showRewardDialog() {
-    showInfoDialog(
-      context: context,
-      emoji: '🎉',
-      title: tr(context, 'reward_ready_title'),
-      message: tr(context, 'reward_ready_body',
-          {'n': '${AttendanceLogic.coffeeStreak}'}),
-      confirmText: tr(context, 'ok_great'),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final tiers = context.read<AppRepository>().rewardTiers;
     return Scaffold(
       appBar: AppBar(
         title: Text(tr(context, 'attendance_appbar'),
@@ -241,7 +206,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
         ],
       ),
-      body: _buildBody(context, tiers),
+      body: _buildBody(context),
     );
   }
 
@@ -265,7 +230,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     ));
   }
 
-  Widget _buildBody(BuildContext context, List<RewardTier> tiers) {
+  Widget _buildBody(BuildContext context) {
     if (_loadingGroups) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -332,10 +297,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       : DateFormat('M/d (E)', 'ko').format(_nextScheduled!),
                   onTap: _checkIn,
                 ),
-                const SizedBox(height: 16),
-                _ProgressCard(summary: s, tiers: tiers),
-                const SizedBox(height: 16),
-                RewardSection(summary: s),
                 const SizedBox(height: 24),
                 _InfoNote(),
               ],
@@ -759,7 +720,7 @@ class _StreakCard extends StatelessWidget {
   }
 }
 
-/// 스트릭 노드 트랙 (칸 수는 고정, 커피 보상 지점만 표시).
+/// 스트릭 노드 트랙 (칸 수는 고정, 연속 출석 회차 표시).
 class _StreakTrack extends StatelessWidget {
   const _StreakTrack({required this.streak});
   final int streak;
@@ -767,56 +728,41 @@ class _StreakTrack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final track = AttendanceLogic.streakTrackDays; // 한 번에 보이는 노드 수(5)
-    final cycle = AttendanceLogic.coffeeStreak; // 2회마다 리워드
-    // 현재 연속출석에 맞춰 창이 이동(예: 7회 → 4~8회). 리워드는 2·4·6…회차.
-    final justReached = streak > 0 && streak % cycle == 0;
-    final nextReward = streak == 0
-        ? cycle
-        : (justReached ? streak : ((streak ~/ cycle) + 1) * cycle);
-    final end = nextReward < track ? track : nextReward;
+    // 현재 연속출석에 맞춰 창이 이동(예: 7회 → 4~8회 노드가 보임).
+    final end = streak + 1 < track ? track : streak + 1;
     final start = end - track + 1 < 1 ? 1 : end - track + 1;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(track, (i) {
         final dayNum = start + i;
         final done = dayNum <= streak;
-        final isReward = dayNum % cycle == 0;
         return Column(
           children: [
             Container(
-              width: isReward ? 34 : 28,
-              height: isReward ? 34 : 28,
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
-                color: isReward
-                    ? AppTheme.streakFlame
-                    : (done
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.18)),
+                color: done
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.18),
                 shape: BoxShape.circle,
-                border: !done && !isReward
+                border: !done
                     ? Border.all(color: Colors.white.withValues(alpha: 0.35))
                     : null,
               ),
               child: Icon(
-                isReward ? Icons.local_cafe : Icons.check,
-                size: isReward ? 17 : 14,
-                color: isReward
-                    ? const Color(0xFF854D0E)
-                    : (done ? AppTheme.brand600 : Colors.white),
+                Icons.check,
+                size: 14,
+                color: done ? AppTheme.brand600 : Colors.white,
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              isReward
-                  ? tr(context, 'reward')
-                  : tr(context, 'day_n', {'n': '$dayNum'}),
+              tr(context, 'day_n', {'n': '$dayNum'}),
               style: TextStyle(
                 fontSize: 10,
-                fontWeight:
-                    done || isReward ? FontWeight.bold : FontWeight.w500,
-                color: isReward
-                    ? AppTheme.streakFlame
-                    : Colors.white.withValues(alpha: done ? 1 : 0.6),
+                fontWeight: done ? FontWeight.bold : FontWeight.w500,
+                color: Colors.white.withValues(alpha: done ? 1 : 0.6),
               ),
             ),
           ],
@@ -986,102 +932,6 @@ class _CalendarCardState extends State<_CalendarCard> {
               color: Colors.white,
               fontWeight: FontWeight.bold),
         ),
-      ),
-    );
-  }
-}
-
-class _ProgressCard extends StatelessWidget {
-  const _ProgressCard({required this.summary, required this.tiers});
-  final AttendanceSummary summary;
-  final List<RewardTier> tiers;
-
-  @override
-  Widget build(BuildContext context) {
-    final target = AttendanceLogic.coffeeStreak;
-    // 리워드는 2회 '주기'마다 지급 → 주기 내 위치로 진행/남은 횟수 계산.
-    // 예) 2회=달성(보상), 3회=1/2·1회 남음, 4회=달성.
-    final streak = summary.currentStreak;
-    final cyclePos = target == 0 ? 0 : streak % target;
-    final achieved = streak > 0 && cyclePos == 0;
-    final current = achieved ? target : cyclePos;
-    final progress = target == 0 ? 0.0 : current / target;
-    final remaining = achieved ? 0 : target - cyclePos;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppTheme.brandTonal.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-        border: Border.all(color: AppTheme.brand500.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(Icons.card_giftcard,
-                size: 28, color: AppTheme.brand500),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(tr(context, 'coffee_goal'),
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF18181B))),
-                    ),
-                    Text(
-                        tr(context, 'count_of',
-                            {'c': '$current', 't': '$target'}),
-                        style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.brand600)),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  achieved
-                      ? tr(context, 'coffee_ready')
-                      : tr(context, 'coffee_hint', {
-                          'goal': '${AttendanceLogic.coffeeStreak}',
-                          'n': '$remaining'
-                        }),
-                  style: TextStyle(
-                      fontSize: 11.5,
-                      color: achieved
-                          ? AppTheme.brand600
-                          : Colors.grey.shade600,
-                      fontWeight:
-                          achieved ? FontWeight.bold : FontWeight.normal),
-                ),
-                const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 8,
-                    backgroundColor: Colors.white,
-                    valueColor:
-                        const AlwaysStoppedAnimation(AppTheme.brand500),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

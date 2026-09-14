@@ -29,9 +29,10 @@ const Map<String, List<String>> _dict = {
   'nav_activities': ['대외활동', 'Activities'],
   'nav_attendance': ['출석', 'Attendance'],
   'nav_certs': ['자격증', 'Certs'],
+  'nav_rewards': ['리워드', 'Rewards'],
 
   // 로그인
-  'login_subtitle': ['학과 동아리 앱에 로그인', 'Sign in to the club app'],
+  'login_subtitle': ['유한대 식품영양학과 앱에 로그인', 'Sign in to the department app'],
   'signup_subtitle': ['새 계정 만들기', 'Create a new account'],
   'admin_login_subtitle': ['운영진 전용 관리자 로그인', 'Staff-only admin login'],
   'login_user': ['일반 로그인', 'User'],
@@ -79,16 +80,32 @@ const Map<String, List<String>> _dict = {
   'streak_remaining': ['다음 리워드까지 {n}회 남았어요.', '{n} more session(s) until your next reward.'],
   'reward': ['리워드', 'Reward'],
   // 빽다방 리워드 섹션
-  'reward_section_title': ['리워드', 'Reward'],
+  'rewards_appbar': ['리워드', 'Rewards'],
+  'reward_section_title': ['빽다방 음료 쿠폰', 'Paik\'s Coffee coupon'],
   'reward_section_sub': [
-    '연속 출석 시 빽다방 음료 쿠폰 1개 지급 (부천역곡역북부점 사용)',
-    'Earn a Paik\'s Coffee drink coupon for an attendance streak.'
+    '하루 1개 발급 · 발급받은 쿠폰을 사용해야 다음 쿠폰을 받을 수 있어요 (부천역곡역북부점 사용)',
+    'One coupon per day · use your coupon before claiming the next one.'
   ],
-  'reward_claim_n': ['음료 쿠폰 받기 ({n}개)', 'Claim drink coupon ({n})'],
-  'reward_none_yet': [
-    '{n}일 연속 출석하면 음료 쿠폰을 받을 수 있어요.',
-    'Attend {n} sessions in a row to earn a drink coupon.'
+  'reward_claim_today': ['오늘의 음료 쿠폰 받기', "Claim today's drink coupon"],
+  'reward_has_unused': [
+    '사용하지 않은 쿠폰이 있어요. 사용 후 새 쿠폰을 받을 수 있어요.',
+    'You have an unused coupon. Use it to claim a new one.'
   ],
+  'reward_claimed_today': [
+    '오늘은 이미 쿠폰을 발급받았어요. 내일 다시 받을 수 있어요.',
+    "You've already claimed today's coupon. Come back tomorrow."
+  ],
+  'member_club': ['동아리원', 'Club member'],
+  'member_general': ['일반학생', 'Student'],
+  'member_club_desc': [
+    '멘토링 그룹에 소속된 동아리원이에요.',
+    "You're a club member in a mentoring group."
+  ],
+  'member_general_desc': [
+    '동아리(멘토링 그룹)에 가입하면 동아리원이 돼요.',
+    'Join a mentoring group to become a club member.'
+  ],
+  'qa_reward': ['리워드', 'Rewards'],
   'reward_stock': ['남은 수량', 'Remaining'],
   'my_coupons': ['내 쿠폰', 'My coupons'],
   'used_coupons': ['사용한 쿠폰', 'Used coupons'],

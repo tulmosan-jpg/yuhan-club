@@ -11,6 +11,7 @@ import 'reports/reports_screen.dart';
 import 'activities/activities_screen.dart';
 import 'attendance/attendance_screen.dart';
 import 'certifications/certifications_screen.dart';
+import 'rewards/rewards_screen.dart';
 
 /// 하단 탭 네비게이션 셸.
 /// 관리자 로그인 세션에서는 보고서 관리 화면만 노출한다.
@@ -23,31 +24,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _index = 0;
-  // 출석 탭 리워드 섹션으로 스크롤 요청 신호(값이 바뀔 때마다 스크롤).
-  final ValueNotifier<int> _rewardScroll = ValueNotifier(0);
   // 출석 탭이 보일 때마다 그룹 목록을 다시 불러오게 하는 신호.
   final ValueNotifier<int> _groupsRefresh = ValueNotifier(0);
   // 홈 탭이 보일 때마다 대시보드를 다시 로드하게 하는 신호.
   final ValueNotifier<int> _homeRefresh = ValueNotifier(0);
+  // 리워드 탭이 보일 때마다 쿠폰/재고를 다시 불러오게 하는 신호.
+  final ValueNotifier<int> _rewardsRefresh = ValueNotifier(0);
 
   void _goTo(int i) {
     setState(() => _index = i);
     if (i == 0) _homeRefresh.value++;
     if (i == 3) _groupsRefresh.value++;
+    if (i == 5) _rewardsRefresh.value++;
   }
 
-  // 홈 리워드 노드 → 출석 탭으로 이동 + 리워드 섹션으로 스크롤.
-  void _goToReward() {
-    setState(() => _index = 3);
-    _groupsRefresh.value++;
-    _rewardScroll.value++;
-  }
+  // 홈 리워드 바로가기 → 리워드 탭으로 이동.
+  void _goToReward() => _goTo(5);
 
   @override
   void dispose() {
-    _rewardScroll.dispose();
     _groupsRefresh.dispose();
     _homeRefresh.dispose();
+    _rewardsRefresh.dispose();
     super.dispose();
   }
 
@@ -86,9 +84,9 @@ class _HomeScreenState extends State<HomeScreen> {
           onNavigate: _goTo, onReward: _goToReward, refresh: _homeRefresh),
       ReportsScreen(onNeedMentor: () => _goTo(3)),
       const ActivitiesScreen(),
-      AttendanceScreen(
-          rewardScroll: _rewardScroll, groupsRefresh: _groupsRefresh),
+      AttendanceScreen(groupsRefresh: _groupsRefresh),
       const CertificationsScreen(),
+      RewardsScreen(refresh: _rewardsRefresh),
     ];
     return Scaffold(
       body: IndexedStack(index: _index, children: pages),
@@ -120,6 +118,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.workspace_premium_outlined),
             selectedIcon: const Icon(Icons.workspace_premium),
             label: tr(context, 'nav_certs'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.local_cafe_outlined),
+            selectedIcon: const Icon(Icons.local_cafe),
+            label: tr(context, 'nav_rewards'),
           ),
         ],
       ),

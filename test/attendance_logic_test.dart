@@ -53,11 +53,11 @@ void main() {
       expect(s.currentStreak, 0);
     });
 
-    test('커피 보상 기준(연속 2회) 도달 확인', () {
+    test('예정일 2회 연속 출석 시 스트릭 2', () {
       final schedule = [day(-7), day(0)];
       final attended = [day(-7), day(0)];
       final s = AttendanceLogic.summarize(attended, schedule: schedule);
-      expect(s.currentStreak >= AttendanceLogic.coffeeStreak, true);
+      expect(s.currentStreak, 2);
     });
   });
 

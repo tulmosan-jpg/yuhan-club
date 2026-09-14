@@ -34,7 +34,6 @@ abstract class AppRepository {
   Future<List<Activity>> fetchUpcomingActivities({int limit = 3});
 
   // ── 연속 출석 ──
-  List<RewardTier> get rewardTiers;
   Future<AttendanceSummary> fetchAttendance();
 
   /// 오늘 출석 체크. 이미 했으면 false 반환.
@@ -123,13 +122,10 @@ abstract class AppRepository {
   /// 관리자: 전체 발급 쿠폰.
   Future<List<Coupon>> fetchAllCoupons();
 
-  /// 회원: 지금까지 지급받을 자격이 있는 쿠폰 수(스트릭 2회당 1개)에서
-  /// 이미 받은 수를 뺀 '지금 받을 수 있는' 개수.
-  Future<int> fetchAvailableCoupons(AttendanceSummary summary);
-
-  /// 회원: 음료를 골라 쿠폰 1개 발급(재고 차감, 자격 재확인).
-  /// 성공 시 발급된 쿠폰, 재고 소진/자격 없음이면 예외.
-  Future<Coupon> claimCoupon(String drinkId, AttendanceSummary summary);
+  /// 회원: 음료를 골라 쿠폰 1개 발급(재고 차감).
+  /// 규칙: 하루 1개, 미사용 쿠폰이 있으면 발급 불가(서버에서 재검증).
+  /// 성공 시 발급된 쿠폰, 규칙 위반/재고 소진이면 예외.
+  Future<Coupon> claimCoupon(String drinkId);
 
   /// 매장 직원: 코드 입력으로 쿠폰 사용 완료 처리.
   /// 코드 불일치면 false, 성공하면 true.

@@ -164,9 +164,13 @@ exports.onRsvpCreated = onDocumentCreated(
     },
 );
 
-// ══ 리워드(빽다방 쿠폰) — 서버에서 자격/재고 검증 ══════════════════
+// ══ 리워드(빽다방 쿠폰) — 서버에서 발급 규칙/재고 검증 ══════════════
+//
+// 발급 규칙(출석과 무관):
+//  1) 하루(KST) 1개만 발급 가능.
+//  2) 사용하지 않은 쿠폰이 있으면 새로 발급 불가.
+//  3) 재고가 있어야 발급(발급 시점에 차감).
 
-const COFFEE_STREAK = 2; // 연속 출석 2회당 쿠폰 1개
 const DRINK_NAMES = {
   peachtea: "제로슈거 납작복숭아 아이스티",
   americano: "아이스 아메리카노",
@@ -181,52 +185,7 @@ function dayKey(d) {
   return `${y}-${m}-${day}`;
 }
 
-/** 예정일 기준 연속 출석(스케줄 최신순으로 훑어 결석에서 멈춤). */
-function streakFromSchedule(scheduleKeys, attendedKeys, todayKey) {
-  const attended = new Set(attendedKeys);
-  const checkedInToday = attended.has(todayKey);
-  const past = [...new Set(scheduleKeys)]
-      .filter((k) => k <= todayKey && !(k === todayKey && !checkedInToday))
-      .sort()
-      .reverse();
-  let streak = 0;
-  for (const k of past) {
-    if (attended.has(k)) streak++;
-    else break;
-  }
-  return streak;
-}
-
-/** 사용자의 첫 그룹 기준 신뢰 스트릭을 서버 데이터로 재계산. */
-async function trustedStreak(uid) {
-  // 내가 속한 첫 그룹 찾기.
-  const groupsSnap = await db.collection("groups").get();
-  let gid = null;
-  for (const g of groupsSnap.docs) {
-    const m = await db.collection("groups").doc(g.id)
-        .collection("members").doc(uid).get();
-    if (m.exists) {
-      gid = g.id;
-      break;
-    }
-  }
-  const todayKey = dayKey(new Date());
-  if (!gid) return 0;
-  const [datesSnap, ciSnap] = await Promise.all([
-    db.collection("groups").doc(gid).collection("attendance_dates").get(),
-    db.collection("groups").doc(gid).collection("attendance").doc(uid)
-        .collection("checkins").get(),
-  ]);
-  const scheduleKeys = datesSnap.docs
-      .map((d) => (d.data().date ? dayKey(d.data().date.toDate()) : null))
-      .filter(Boolean);
-  const attendedKeys = ciSnap.docs
-      .map((d) => (d.data().date ? dayKey(d.data().date.toDate()) : null))
-      .filter(Boolean);
-  return streakFromSchedule(scheduleKeys, attendedKeys, todayKey);
-}
-
-// ── 쿠폰 발급(자격 재확인 + 재고 차감, 원자적) ──
+// ── 쿠폰 발급(일일 1개 + 미사용 쿠폰 없음 + 재고 차감, 원자적) ──
 exports.claimCoupon = onCall(async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
@@ -235,24 +194,33 @@ exports.claimCoupon = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "잘못된 음료입니다.");
   }
 
-  const streak = await trustedStreak(uid);
-  const earned = Math.floor(streak / COFFEE_STREAK);
-
   const userRef = db.collection("users").doc(uid);
   const cfgRef = db.collection("config").doc("rewards");
   const couponRef = db.collection("coupons").doc();
 
   await db.runTransaction(async (tx) => {
-    const [userSnap, cfgSnap] = await Promise.all([
-      tx.get(userRef), tx.get(cfgRef),
+    const [mineSnap, userSnap, cfgSnap] = await Promise.all([
+      tx.get(db.collection("coupons").where("userId", "==", uid)),
+      tx.get(userRef),
+      tx.get(cfgRef),
     ]);
-    const u = userSnap.data() || {};
-    const rewardUnits = u.rewardUnits || 0;
-    const snapStreak = u.rewardStreakSnapshot || 0;
-    const claimed = streak >= snapStreak ? rewardUnits : 0;
-    if (earned - claimed < 1) {
-      throw new HttpsError("failed-precondition", "받을 수 있는 리워드가 없습니다.");
+
+    const todayKey = dayKey(new Date());
+    for (const doc of mineSnap.docs) {
+      const c = doc.data() || {};
+      if (c.used !== true) {
+        throw new HttpsError(
+            "failed-precondition", "unused_coupon",
+            {reason: "unused_coupon"});
+      }
+      const issuedKey = c.issuedAt ? dayKey(c.issuedAt.toDate()) : null;
+      if (issuedKey === todayKey) {
+        throw new HttpsError(
+            "failed-precondition", "daily_limit",
+            {reason: "daily_limit"});
+      }
     }
+
     const cfg = cfgSnap.data() || {};
     const stock = cfg.stock || {};
     const remaining = typeof stock[drinkId] === "number" ? stock[drinkId] : 0;
@@ -262,6 +230,7 @@ exports.claimCoupon = onCall(async (request) => {
     // 재고는 쿠폰을 '받는(발급)' 시점에 차감한다.
     const newStock = Object.assign({}, stock);
     newStock[drinkId] = remaining - 1;
+    const u = userSnap.data() || {};
     tx.set(cfgRef, {stock: newStock}, {merge: true});
     tx.set(couponRef, {
       userId: uid,
@@ -271,10 +240,6 @@ exports.claimCoupon = onCall(async (request) => {
       issuedAt: admin.firestore.FieldValue.serverTimestamp(),
       used: false,
     });
-    tx.set(userRef, {
-      rewardUnits: claimed + 1,
-      rewardStreakSnapshot: streak,
-    }, {merge: true});
   });
 
   return {couponId: couponRef.id, drinkId, drinkName: DRINK_NAMES[drinkId]};

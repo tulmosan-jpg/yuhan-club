@@ -172,11 +172,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 _Greeting(name: repo.currentUserName),
                 const SizedBox(height: 20),
-                _StreakCard(
-                  summary: d.attendance,
-                  onReward:
-                      widget.onReward ?? () => widget.onNavigate?.call(3),
-                ),
+                _StreakCard(summary: d.attendance),
                 if (d.nextDate != null) ...[
                   const SizedBox(height: 16),
                   _NextSessionCard(
@@ -188,7 +184,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 28),
                 _SectionHeader(title: tr(context, 'quick_actions')),
                 const SizedBox(height: 12),
-                _QuickActions(onNavigate: widget.onNavigate),
+                _QuickActions(
+                    onNavigate: widget.onNavigate,
+                    onReward: widget.onReward),
                 const SizedBox(height: 28),
                 _SectionHeader(
                   title: tr(context, 'closing_soon_section'),
@@ -473,18 +471,12 @@ class _GreetingState extends State<_Greeting> {
 
 // ── 연속 출석 스트릭 카드 ───────────────────────────────────────────
 class _StreakCard extends StatelessWidget {
-  const _StreakCard({required this.summary, this.onReward});
+  const _StreakCard({required this.summary});
   final AttendanceSummary summary;
-  final VoidCallback? onReward;
 
   @override
   Widget build(BuildContext context) {
-    final goal = AttendanceLogic.coffeeStreak; // 2 (연속 2회마다 → 음료)
-    final streak = summary.currentStreak; // 표시용: 실제 연속출석 수(출석 화면과 동일)
-    // 리워드는 2회 '주기'마다 지급 → 다음 보상까지 남은 횟수는 주기 기준.
-    // 예) 2회=받을수있음, 3회=1회 남음, 4회=받을수있음.
-    final cyclePos = goal == 0 ? 0 : streak % goal;
-    final remaining = (streak > 0 && cyclePos == 0) ? 0 : goal - cyclePos;
+    final streak = summary.currentStreak;
 
     return Container(
       padding: const EdgeInsets.all(22),
@@ -529,9 +521,9 @@ class _StreakCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      remaining == 0
+                      streak > 0
                           ? tr(context, 'streak_done', {'n': '$streak'})
-                          : tr(context, 'streak_ongoing', {'n': '$streak'}),
+                          : tr(context, 'streak_start'),
                       style: const TextStyle(
                           fontSize: 19,
                           fontWeight: FontWeight.bold,
@@ -539,9 +531,7 @@ class _StreakCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      remaining == 0
-                          ? tr(context, 'streak_reward_ready')
-                          : tr(context, 'streak_remaining', {'n': '$remaining'}),
+                      tr(context, 'streak_encourage'),
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -563,7 +553,7 @@ class _StreakCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          _StreakTrack(streak: summary.currentStreak, onReward: onReward),
+          _StreakTrack(streak: summary.currentStreak),
         ],
       ),
     );
@@ -571,84 +561,51 @@ class _StreakCard extends StatelessWidget {
 }
 
 class _StreakTrack extends StatelessWidget {
-  const _StreakTrack({required this.streak, this.onReward});
+  const _StreakTrack({required this.streak});
   final int streak;
-  final VoidCallback? onReward;
 
   @override
   Widget build(BuildContext context) {
     final track = AttendanceLogic.streakTrackDays; // 한 번에 보이는 노드 수(5)
-    final cycle = AttendanceLogic.coffeeStreak; // 2회마다 리워드
     // 현재 연속출석에 맞춰 창이 이동한다(예: 7회 → 4~8회 노드가 보임).
-    // 리워드 마커는 2·4·6·8… 회차에 표시.
-    final justReached = streak > 0 && streak % cycle == 0;
-    final nextReward = streak == 0
-        ? cycle
-        : (justReached ? streak : ((streak ~/ cycle) + 1) * cycle);
-    final end = nextReward < track ? track : nextReward;
+    final end = streak + 1 < track ? track : streak + 1;
     final start = end - track + 1 < 1 ? 1 : end - track + 1;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(track, (i) {
         final dayNum = start + i; // 실제 출석 회차 번호
         final done = dayNum <= streak;
-        final isReward = dayNum % cycle == 0;
-        final label = tr(context, 'day_n', {'n': '$dayNum'});
-        final node = Column(
+        return Column(
           children: [
             Container(
-              width: isReward ? 32 : 26,
-              height: isReward ? 32 : 26,
+              width: 26,
+              height: 26,
               decoration: BoxDecoration(
-                color: isReward
-                    ? AppTheme.streakFlame
-                    : (done
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.18)),
+                color: done
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.18),
                 shape: BoxShape.circle,
-                border: !done && !isReward
+                border: !done
                     ? Border.all(color: Colors.white.withValues(alpha: 0.35))
                     : null,
               ),
               child: Icon(
-                isReward ? Icons.local_cafe : Icons.check,
-                size: isReward ? 16 : 13,
-                color: isReward
-                    ? const Color(0xFF854D0E)
-                    : (done ? AppTheme.brand600 : Colors.white),
+                Icons.check,
+                size: 13,
+                color: done ? AppTheme.brand600 : Colors.white,
               ),
             ),
             const SizedBox(height: 6),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  isReward ? tr(context, 'reward') : label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight:
-                        done || isReward ? FontWeight.bold : FontWeight.w500,
-                    color: isReward
-                        ? AppTheme.streakFlame
-                        : Colors.white.withValues(alpha: done ? 1 : 0.6),
-                  ),
-                ),
-                if (isReward && onReward != null)
-                  Icon(Icons.chevron_right,
-                      size: 12, color: AppTheme.streakFlame),
-              ],
+            Text(
+              tr(context, 'day_n', {'n': '$dayNum'}),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: done ? FontWeight.bold : FontWeight.w500,
+                color: Colors.white.withValues(alpha: done ? 1 : 0.6),
+              ),
             ),
           ],
         );
-        // 리워드 노드는 탭하면 리워드(출석) 화면으로 이동.
-        if (isReward && onReward != null) {
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onReward,
-            child: node,
-          );
-        }
-        return node;
       }),
     );
   }
@@ -656,8 +613,9 @@ class _StreakTrack extends StatelessWidget {
 
 // ── 빠른 실행 타일 ─────────────────────────────────────────────────
 class _QuickActions extends StatelessWidget {
-  const _QuickActions({this.onNavigate});
+  const _QuickActions({this.onNavigate, this.onReward});
   final void Function(int index)? onNavigate;
+  final VoidCallback? onReward;
 
   @override
   Widget build(BuildContext context) {
@@ -673,18 +631,18 @@ class _QuickActions extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _ActionTile(
-            icon: Icons.confirmation_number_outlined,
-            label: tr(context, 'qa_activities'),
-            onTap: () => onNavigate?.call(2),
+            icon: Icons.event_available,
+            label: tr(context, 'qa_checkin'),
+            onTap: () => onNavigate?.call(3),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: _ActionTile(
-            icon: Icons.event_available,
-            label: tr(context, 'qa_checkin'),
+            icon: Icons.local_cafe,
+            label: tr(context, 'qa_reward'),
             highlighted: true,
-            onTap: () => onNavigate?.call(3),
+            onTap: onReward ?? () {},
           ),
         ),
       ],

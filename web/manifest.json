@@ -1,11 +1,11 @@
 {
-    "name": "yuhan_club",
-    "short_name": "yuhan_club",
+    "name": "유한대 식품영양학과",
+    "short_name": "유한대 식영과",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "유한대학교 식품영양학과 앱",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
