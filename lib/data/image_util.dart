@@ -4,11 +4,12 @@ import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
-/// 갤러리에서 사진을 골라 용량을 줄인 JPEG base64 문자열로 반환한다.
+/// 갤러리(기본) 또는 카메라에서 사진을 골라 용량을 줄인 JPEG base64 로 반환.
 /// 취소하면 null. Firestore 문서(1MB) 한도를 고려해 720px/품질70으로 압축.
-Future<String?> pickResizedPhotoBase64() async {
+Future<String?> pickResizedPhotoBase64(
+    {ImageSource source = ImageSource.gallery}) async {
   final picked = await ImagePicker().pickImage(
-    source: ImageSource.gallery,
+    source: source,
     maxWidth: 1280,
     maxHeight: 1280,
     imageQuality: 85,

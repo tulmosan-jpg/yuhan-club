@@ -531,6 +531,8 @@ class FirebaseRepository implements AppRepository {
       issuedAt: (m['issuedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       used: (m['used'] as bool?) ?? false,
       usedAt: (m['usedAt'] as Timestamp?)?.toDate(),
+      signatureB64: m['signatureB64'] as String?,
+      receiptB64: m['receiptB64'] as String?,
     );
   }
 
@@ -566,10 +568,15 @@ class FirebaseRepository implements AppRepository {
   }
 
   @override
-  Future<bool> redeemCoupon(String couponId, String code) async {
+  Future<bool> redeemCoupon(String couponId, String code,
+      {required String signatureB64, required String receiptB64}) async {
     final callable = _functions.httpsCallable('redeemCoupon');
-    final res =
-        await callable.call({'couponId': couponId, 'code': code.trim()});
+    final res = await callable.call({
+      'couponId': couponId,
+      'code': code.trim(),
+      'signature': signatureB64,
+      'receipt': receiptB64,
+    });
     return (res.data as Map)['ok'] == true;
   }
 

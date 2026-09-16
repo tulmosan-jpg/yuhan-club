@@ -3,7 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import 'dart:io';
+
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../../data/repository.dart';
+import '../../data/reward_excel.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/reward.dart';
 import '../../widgets/app_dialog.dart';
@@ -90,6 +96,40 @@ class _AdminRewardScreenState extends State<AdminRewardScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('${tr(context, 'stock_save_failed')}: $e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// 수령 완료 쿠폰(서명·영수증 포함)을 엑셀 명단으로 만들어 공유한다.
+  Future<void> _exportRoster(List<Coupon> coupons) async {
+    final used = coupons.where((c) => c.used).toList()
+      ..sort((a, b) => (a.usedAt ?? a.issuedAt).compareTo(b.usedAt ?? b.issuedAt));
+    if (used.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'roster_empty'))));
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final bytes = buildRewardRosterXlsx(used);
+      final dir = await getTemporaryDirectory();
+      final name =
+          '리워드_수령자_명단_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.xlsx';
+      final file = File('${dir.path}/$name');
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(ShareParams(
+        files: [
+          XFile(file.path,
+              mimeType:
+                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        ],
+      ));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('${tr(context, 'roster_export_failed')}: $e')));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -212,6 +252,14 @@ class _AdminRewardScreenState extends State<AdminRewardScreen> {
                             {'issued': '$issued', 'used': '$usedN'}),
                         style: TextStyle(
                             fontSize: 12.5, color: Colors.grey.shade600)),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.table_view_outlined, size: 20),
+                      tooltip: tr(context, 'roster_export'),
+                      color: _purple,
+                      onPressed:
+                          _busy ? null : () => _exportRoster(d.coupons),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),

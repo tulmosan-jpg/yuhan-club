@@ -70,6 +70,10 @@ class Coupon {
   final bool used;
   final DateTime? usedAt;
 
+  /// 수령 시 남긴 전자서명(PNG base64)·주문서/영수증 사진(JPEG base64).
+  final String? signatureB64;
+  final String? receiptB64;
+
   const Coupon({
     required this.id,
     required this.userId,
@@ -79,6 +83,8 @@ class Coupon {
     required this.issuedAt,
     this.used = false,
     this.usedAt,
+    this.signatureB64,
+    this.receiptB64,
   });
 }
 

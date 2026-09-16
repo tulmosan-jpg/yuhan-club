@@ -129,7 +129,9 @@ abstract class AppRepository {
 
   /// 매장 직원: 코드 입력으로 쿠폰 사용 완료 처리.
   /// 코드 불일치면 false, 성공하면 true.
-  Future<bool> redeemCoupon(String couponId, String code);
+  /// 쿠폰 사용 처리. 직원 코드 + 수령 증빙(서명 PNG·영수증 JPEG, base64) 필수.
+  Future<bool> redeemCoupon(String couponId, String code,
+      {required String signatureB64, required String receiptB64});
 
   // ── 앱 초기화 ──
   /// 내 서버 데이터(보고서·쿠폰·출석·멤버십·프로필/설정) 전체 삭제.

@@ -486,7 +486,8 @@ class MockRepository implements AppRepository {
   }
 
   @override
-  Future<bool> redeemCoupon(String couponId, String code) async {
+  Future<bool> redeemCoupon(String couponId, String code,
+      {required String signatureB64, required String receiptB64}) async {
     await _delay();
     if (_rewardCode.isEmpty || _rewardCode != code.trim()) return false;
     final i = _coupons.indexWhere((c) => c.id == couponId);
@@ -501,6 +502,8 @@ class MockRepository implements AppRepository {
       issuedAt: c.issuedAt,
       used: true,
       usedAt: DateTime.now(),
+      signatureB64: signatureB64,
+      receiptB64: receiptB64,
     );
     // 재고는 발급 시 이미 차감됨 → 사용 시엔 상태만 변경.
     return true;

@@ -99,8 +99,10 @@ class CompositeRepository implements AppRepository {
   @override
   Future<Coupon> claimCoupon(String drinkId) => base.claimCoupon(drinkId);
   @override
-  Future<bool> redeemCoupon(String couponId, String code) =>
-      base.redeemCoupon(couponId, code);
+  Future<bool> redeemCoupon(String couponId, String code,
+          {required String signatureB64, required String receiptB64}) =>
+      base.redeemCoupon(couponId, code,
+          signatureB64: signatureB64, receiptB64: receiptB64);
   @override
   Future<void> resetMemberAccount(String uid) =>
       base.resetMemberAccount(uid);

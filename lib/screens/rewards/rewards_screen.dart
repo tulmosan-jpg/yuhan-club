@@ -7,6 +7,7 @@ import '../../l10n/app_strings.dart';
 import '../../models/group.dart';
 import '../../models/reward.dart';
 import '../../widgets/app_dialog.dart';
+import 'redeem_confirm_screen.dart';
 
 const Color _purple = Color(kPaikNavyValue);
 
@@ -111,6 +112,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
   }
 
   Future<void> _redeem(Coupon c) async {
+    // 1) 직원 비밀번호(4자리) 확인.
     final code = await showPinDialog(
       context: context,
       title: tr(context, 'redeem_title'),
@@ -119,10 +121,20 @@ class _RewardsScreenState extends State<RewardsScreen> {
       confirmColor: _purple,
     );
     if (code == null || !mounted) return;
+    // 2) 수령자 전자서명 + 주문서/영수증 사진(둘 다 필수).
+    final proof = await Navigator.of(context).push<RedeemProof>(
+      MaterialPageRoute(builder: (_) => RedeemConfirmScreen(coupon: c)),
+    );
+    if (proof == null || !mounted) return;
     setState(() => _busy = true);
     final repo = context.read<AppRepository>();
     try {
-      final success = await repo.redeemCoupon(c.id, code.trim());
+      final success = await repo.redeemCoupon(
+        c.id,
+        code.trim(),
+        signatureB64: proof.signatureB64,
+        receiptB64: proof.receiptB64,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(tr(

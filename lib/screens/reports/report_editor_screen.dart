@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../data/image_util.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
+import '../../models/attendance.dart';
 import '../../models/report.dart';
 
 // 새 보고서 작성/수정 화면 디자인 토큰.
@@ -47,6 +48,11 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
   // 멘토(그룹)는 출석 탭에서 미리 선택 → 여기선 내 멘토를 자동 사용.
   String? _groupId; // 내 멘토(그룹)
 
+  // 멘토가 등록한 활동일(자정 정규화). 보고서 날짜는 이 중에서만 고른다.
+  // 기존 보고서의 날짜가 일정에서 빠진 경우는 그대로 인정한다(과거 데이터 보호).
+  List<DateTime> _activityDays = [];
+  bool _scheduleLoaded = false;
+
   static const int _maxPhotos = 4;
   static const List<int> _hourOptions = [1, 2, 3, 4, 5, 6, 7, 8];
 
@@ -66,6 +72,43 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
     if (e != null) _photos.addAll(e.photos);
     // 멘토(그룹)는 호출부에서 전달받아 사용(재조회 없음).
     _groupId = e?.groupId ?? widget.groupId;
+    _loadSchedule();
+  }
+
+  Future<void> _loadSchedule() async {
+    final gid = _groupId;
+    if (gid == null) {
+      setState(() => _scheduleLoaded = true);
+      return;
+    }
+    try {
+      final entries = await context.read<AppRepository>().fetchGroupSchedule(gid);
+      if (!mounted) return;
+      final days = entries.map((e) => AttendanceRecord.dayOf(e.date)).toSet().toList()
+        ..sort();
+      setState(() {
+        _activityDays = days;
+        _scheduleLoaded = true;
+        // 새 보고서면 가장 가까운 활동일로 기본 날짜를 맞춘다
+        // (오늘 이전 중 최근 활동일 우선, 없으면 첫 예정일).
+        if (!_isEdit && days.isNotEmpty && !_isAllowedDay(_date)) {
+          final today = AttendanceRecord.dayOf(DateTime.now());
+          final past = days.where((d) => !d.isAfter(today));
+          _date = past.isNotEmpty ? past.last : days.first;
+        }
+      });
+    } catch (_) {
+      // 일정 조회 실패 시 제한을 적용하지 못하므로 저장 시점에 다시 검사한다.
+      if (mounted) setState(() => _scheduleLoaded = true);
+    }
+  }
+
+  /// [d]가 선택 가능한 날인지: 등록된 활동일이거나, 수정 중인 보고서의 원래 날짜.
+  bool _isAllowedDay(DateTime d) {
+    final day = AttendanceRecord.dayOf(d);
+    if (_activityDays.contains(day)) return true;
+    final orig = widget.existing?.activityDate;
+    return orig != null && AttendanceRecord.dayOf(orig) == day;
   }
 
   bool _prefilled = false;
@@ -106,11 +149,31 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
 
   Future<void> _pickDate() async {
     FocusScope.of(context).unfocus();
+    if (!_scheduleLoaded) return; // 일정 로딩 중
+    if (_activityDays.isEmpty && widget.existing == null) {
+      // 등록된 활동일이 없으면 보고서를 쓸 날이 없다 → 멘토에게 안내.
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'report_no_activity_days'))));
+      return;
+    }
+    // initialDate 는 반드시 predicate 를 만족해야 한다.
+    final initial = _isAllowedDay(_date)
+        ? _date
+        : (_activityDays.isNotEmpty
+            ? _activityDays.last
+            : AttendanceRecord.dayOf(widget.existing!.activityDate));
+    // 달력 범위: 활동일 + (있다면) 기존 보고서 날짜를 모두 포함.
+    final candidates = <DateTime>[
+      ..._activityDays,
+      if (widget.existing != null)
+        AttendanceRecord.dayOf(widget.existing!.activityDate),
+    ]..sort();
     final picked = await showDatePicker(
       context: context,
-      initialDate: _date,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
+      initialDate: initial,
+      firstDate: candidates.first,
+      lastDate: candidates.last,
+      selectableDayPredicate: _isAllowedDay,
     );
     if (picked != null) setState(() => _date = picked);
   }
@@ -169,6 +232,15 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
     if (_groupId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(tr(context, 'no_group_join_first'))));
+      return;
+    }
+    // 활동일 검증: 멘토가 등록한 활동일(또는 기존 보고서의 원래 날짜)만 허용.
+    if (_scheduleLoaded && !_isAllowedDay(_date)) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(tr(context,
+              _activityDays.isEmpty
+                  ? 'report_no_activity_days'
+                  : 'report_date_not_activity'))));
       return;
     }
     setState(() => _saving = true);

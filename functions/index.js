@@ -341,9 +341,17 @@ exports.resetMemberPassword = onCall(async (request) => {
 exports.redeemCoupon = onCall(async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
-  const {couponId, code} = request.data || {};
+  const {couponId, code, signature, receipt} = request.data || {};
   if (!couponId || !code) {
     throw new HttpsError("invalid-argument", "쿠폰/코드가 필요합니다.");
+  }
+  // 수령 증빙 필수: 수령자 전자서명(PNG) + 주문서/영수증 사진(JPEG).
+  if (!signature || !receipt) {
+    throw new HttpsError("invalid-argument", "서명과 영수증 사진이 필요합니다.");
+  }
+  // Firestore 문서 1MB 한도 보호(base64 기준 대략 상한).
+  if (String(signature).length > 300000 || String(receipt).length > 500000) {
+    throw new HttpsError("invalid-argument", "증빙 이미지가 너무 큽니다.");
   }
   // 재고는 발급 시 이미 차감됨 → 사용 시엔 상태(used)만 표시하고 재고는 유지.
   const cfgSnap = await db.collection("config").doc("rewards").get();
@@ -358,6 +366,8 @@ exports.redeemCoupon = onCall(async (request) => {
   await ref.set({
     used: true,
     usedAt: admin.firestore.FieldValue.serverTimestamp(),
+    signatureB64: String(signature),
+    receiptB64: String(receipt),
   }, {merge: true});
   return {ok: true};
 });
