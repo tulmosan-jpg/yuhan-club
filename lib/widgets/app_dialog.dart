@@ -330,6 +330,102 @@ Future<({bool available, String reason})?> showRsvpDialog({
   );
 }
 
+/// 비밀번호 변경: 현재(임시) 비밀번호 + 새 비밀번호. 확인 시 (current, next).
+Future<({String current, String next})?> showChangePasswordDialog({
+  required BuildContext context,
+}) {
+  final curCtrl = TextEditingController();
+  final newCtrl = TextEditingController();
+  var obscureCur = true;
+  var obscureNew = true;
+  String? error;
+  return showDialog<({String current, String next})>(
+    context: context,
+    builder: (dctx) => StatefulBuilder(
+      builder: (dctx, setLocal) => _shell(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(child: _iconBadge(Icons.lock_reset, AppTheme.brand500)),
+            const SizedBox(height: 18),
+            Text(tr(dctx, 'pw_change_title'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 19, fontWeight: FontWeight.bold, color: _title)),
+            const SizedBox(height: 8),
+            Text(tr(dctx, 'pw_change_desc'),
+                textAlign: TextAlign.center,
+                style:
+                    const TextStyle(fontSize: 14, height: 1.5, color: _muted)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: curCtrl,
+              obscureText: obscureCur,
+              autofocus: true,
+              style: const TextStyle(fontSize: 16, color: _title),
+              decoration: _filledInput(tr(dctx, 'pw_current')).copyWith(
+                suffixIcon: IconButton(
+                  icon: Icon(
+                      obscureCur
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      size: 20,
+                      color: const Color(0xFF9CA3AF)),
+                  onPressed: () => setLocal(() => obscureCur = !obscureCur),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: newCtrl,
+              obscureText: obscureNew,
+              style: const TextStyle(fontSize: 16, color: _title),
+              decoration: _filledInput(tr(dctx, 'pw_new')).copyWith(
+                suffixIcon: IconButton(
+                  icon: Icon(
+                      obscureNew
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      size: 20,
+                      color: const Color(0xFF9CA3AF)),
+                  onPressed: () => setLocal(() => obscureNew = !obscureNew),
+                ),
+              ),
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 8),
+              Text(error!,
+                  style: const TextStyle(fontSize: 12.5, color: _danger)),
+            ],
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                _cancelButton(
+                    dctx, tr(dctx, 'cancel'), () => Navigator.pop(dctx, null)),
+                const SizedBox(width: 12),
+                _actionButton(tr(dctx, 'pw_change_confirm'), AppTheme.brand500,
+                    () {
+                  if (curCtrl.text.isEmpty) {
+                    setLocal(() => error = tr(dctx, 'pw_current_empty'));
+                    return;
+                  }
+                  if (newCtrl.text.length < 6) {
+                    setLocal(() => error = tr(dctx, 'err_pw_len'));
+                    return;
+                  }
+                  Navigator.pop(
+                      dctx, (current: curCtrl.text, next: newCtrl.text));
+                }),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 /// 그룹 만들기: 이름 + 4자리 PIN. 확인 시 (name, pin), 취소 null.
 Future<({String name, String pin})?> showCreateGroupDialog({
   required BuildContext context,

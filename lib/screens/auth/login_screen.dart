@@ -5,6 +5,7 @@ import '../../app/theme.dart';
 import '../../data/auth_service.dart';
 import '../../data/login_prefs.dart';
 import '../../l10n/app_strings.dart';
+import '../../widgets/app_dialog.dart';
 
 /// 이메일/비밀번호 로그인 + 회원가입 (토글) 화면.
 class LoginScreen extends StatefulWidget {
@@ -138,8 +139,14 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await context.read<AuthService>().sendPasswordReset(email);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr(context, 'pw_reset_sent'))),
+        // 메일이 스팸함으로 가거나 늦게 오는 경우가 많아 안내를 자세히.
+        await showConfirmDialog(
+          context: context,
+          icon: Icons.mark_email_read_outlined,
+          title: tr(context, 'pw_reset_sent_title'),
+          message: tr(context, 'pw_reset_sent_body', {'email': email}),
+          confirmText: tr(context, 'confirm'),
+          showCancel: false,
         );
       }
     } catch (e) {

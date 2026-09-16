@@ -240,7 +240,42 @@ class AuthService {
       .doc('join_code')
       .set({'code': code.trim()}, SetOptions(merge: true));
 
-  Future<void> sendPasswordReset(String email) async {
+  /// 현재(임시) 비밀번호로 재인증 후 새 비밀번호로 변경.
+  /// 성공하면 '임시 비밀번호 변경 필요' 마크도 해제한다.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    final email = user?.email;
+    if (user == null || email == null) {
+      throw FirebaseAuthException(code: 'user-not-found');
+    }
+    final cred = EmailAuthProvider.credential(
+        email: email, password: currentPassword);
+    await user.reauthenticateWithCredential(cred);
+    await user.updatePassword(newPassword);
+    try {
+      await _db
+          .collection('users')
+          .doc(user.uid)
+          .set({'mustChangePassword': false}, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
+  /// 임시 비밀번호로 로그인한 상태인지(관리자 발급 시 서버가 마크).
+  Future<bool> mustChangePassword() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return false;
+    try {
+      final doc = await _db.collection('users').doc(uid).get();
+      return doc.data()?['mustChangePassword'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+    Future<void> sendPasswordReset(String email) async {
     // 재설정 메일과 링크가 여는 페이지(만료/오류 안내 포함)를 한국어로.
     await _auth.setLanguageCode('ko');
     await _auth.sendPasswordResetEmail(email: email.trim());

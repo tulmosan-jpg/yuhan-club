@@ -380,6 +380,9 @@ exports.resetMemberPassword = onCall(async (request) => {
     pw += chars[Math.floor(Math.random() * chars.length)];
   }
   await admin.auth().updateUser(targetUid, {password: pw});
+  // 다음 로그인 때 새 비밀번호 설정을 유도하는 마크(앱이 확인 후 해제).
+  await db.collection("users").doc(targetUid)
+      .set({mustChangePassword: true}, {merge: true});
   let email = "";
   try {
     const u = await admin.auth().getUser(targetUid);

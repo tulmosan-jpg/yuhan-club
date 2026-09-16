@@ -15,6 +15,7 @@ import '../../data/repository.dart';
 import '../../data/attendance_logic.dart';
 import '../../l10n/app_strings.dart';
 import '../../l10n/locale_provider.dart';
+import '../../widgets/app_dialog.dart';
 import '../settings/notification_settings_screen.dart';
 import '../../models/activity.dart';
 import '../activities/activity_detail_screen.dart';
@@ -53,9 +54,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!AppConfig.useMock) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         NotificationService.instance.requestPermission();
+        _promptPasswordChangeIfNeeded();
       });
     }
   }
+
+  /// 관리자가 발급한 임시 비밀번호로 로그인했으면 새 비밀번호 설정을 유도.
+  Future<void> _promptPasswordChangeIfNeeded() async {
+    final auth = context.read<AuthService>();
+    if (!await auth.mustChangePassword() || !mounted) return;
+    final go = await showConfirmDialog(
+      context: context,
+      icon: Icons.lock_reset,
+      title: tr(context, 'pw_temp_title'),
+      message: tr(context, 'pw_temp_body'),
+      confirmText: tr(context, 'pw_change_now'),
+      cancelText: tr(context, 'later'),
+    );
+    if (go && mounted) await runChangePasswordFlow(context);
+  }
+
+
 
   @override
   void dispose() {
@@ -310,6 +329,8 @@ class _GreetingState extends State<_Greeting> {
             } else if (v == 'notif') {
               Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => const NotificationSettingsScreen()));
+            } else if (v == 'pwchange') {
+              await runChangePasswordFlow(context);
             } else if (v == 'lang') {
               await context.read<LocaleProvider>().toggle();
             } else if (v == 'logout') {
@@ -356,6 +377,16 @@ class _GreetingState extends State<_Greeting> {
                   ],
                 ),
               ),
+            PopupMenuItem(
+              value: 'pwchange',
+              child: Row(
+                children: [
+                  const Icon(Icons.lock_outline, size: 18),
+                  const SizedBox(width: 8),
+                  Text(tr(context, 'pw_change_title')),
+                ],
+              ),
+            ),
             PopupMenuItem(
               value: 'lang',
               child: Row(
@@ -1100,4 +1131,25 @@ class _DashboardData {
     this.nextTopic,
     this.pendingRsvp = 0,
   });
+}
+
+/// 비밀번호 변경 플로우: 현재(임시) 비밀번호 재인증 → 새 비밀번호.
+/// 재인증 실패(오타 등) 시 다시 시도할 수 있게 반복한다.
+Future<void> runChangePasswordFlow(BuildContext context) async {
+  while (context.mounted) {
+    final input = await showChangePasswordDialog(context: context);
+    if (input == null || !context.mounted) return;
+    try {
+      await context.read<AuthService>().changePassword(
+          currentPassword: input.current, newPassword: input.next);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'pw_change_done'))));
+      return;
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, AuthService.errorKey(e)))));
+    }
+  }
 }
