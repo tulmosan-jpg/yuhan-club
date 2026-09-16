@@ -102,7 +102,8 @@ class CompositeRepository implements AppRepository {
   Future<bool> redeemCoupon(String couponId, String code) =>
       base.redeemCoupon(couponId, code);
   @override
-  Future<void> resetMyAccount() => base.resetMyAccount();
+  Future<void> resetMemberAccount(String uid) =>
+      base.resetMemberAccount(uid);
   @override
   Future<List<MemberAccount>> fetchGroupMemberAccounts(String gid) =>
       base.fetchGroupMemberAccounts(gid);

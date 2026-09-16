@@ -44,6 +44,34 @@ class _AdminMemberAccountsScreenState extends State<AdminMemberAccountsScreen> {
     }
   }
 
+  /// 관리자 전용: 회원 한 명의 서버 데이터 초기화.
+  /// 로그인 계정(Authentication)은 남기고 앱 안의 기록만 지운다.
+  Future<void> _resetMember(MemberAccount m) async {
+    final ok = await showConfirmDialog(
+      context: context,
+      icon: Icons.restart_alt,
+      destructive: true,
+      title: tr(context, 'reset_member_title'),
+      message: tr(context, 'reset_member_body', {'name': m.name}),
+      confirmText: tr(context, 'reset_confirm'),
+    );
+    if (!ok || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await context.read<AppRepository>().resetMemberAccount(m.uid);
+      if (!mounted) return;
+      _reload();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(tr(context, 'reset_member_done', {'name': m.name}))));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${tr(context, 'reset_failed')} ($e)')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _resetPassword(MemberAccount m) async {
     final ok = await showConfirmDialog(
       context: context,
@@ -189,15 +217,38 @@ class _AdminMemberAccountsScreenState extends State<AdminMemberAccountsScreen> {
                                 _copyRow(context, tr(context, 'login_id'),
                                     m.email.isEmpty ? '-' : m.email),
                                 const SizedBox(height: 10),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    onPressed:
-                                        _busy ? null : () => _resetPassword(m),
-                                    icon: const Icon(Icons.lock_reset, size: 18),
-                                    label:
-                                        Text(tr(context, 'issue_temp_pw')),
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: _busy
+                                            ? null
+                                            : () => _resetPassword(m),
+                                        icon: const Icon(Icons.lock_reset,
+                                            size: 18),
+                                        label:
+                                            Text(tr(context, 'issue_temp_pw')),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: _busy
+                                            ? null
+                                            : () => _resetMember(m),
+                                        icon: const Icon(Icons.restart_alt,
+                                            size: 18),
+                                        label:
+                                            Text(tr(context, 'reset_member')),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor:
+                                              const Color(0xFFE53E3E),
+                                          side: const BorderSide(
+                                              color: Color(0x33E53E3E)),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

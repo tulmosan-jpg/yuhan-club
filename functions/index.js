@@ -245,13 +245,14 @@ exports.claimCoupon = onCall(async (request) => {
   return {couponId: couponRef.id, drinkId, drinkName: DRINK_NAMES[drinkId]};
 });
 
-// ── 앱 초기화: 내 서버 데이터 전체 삭제 ──────────────────────────
-// 로그아웃 전에 호출. 보고서·쿠폰·출석 체크인·RSVP·그룹 멤버십·프로필/설정을
-// 모두 삭제한다. (체크인/쿠폰은 클라이언트가 지울 수 없으므로 서버에서 처리)
-exports.resetMyAccount = onCall(async (request) => {
-  const uid = request.auth && request.auth.uid;
-  if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
-
+// ── 계정 초기화: 한 회원의 서버 데이터 전체 삭제 ──────────────────
+// 보고서·쿠폰·출석 체크인·RSVP·그룹 멤버십·프로필/설정을 모두 삭제한다.
+// (체크인/쿠폰은 클라이언트가 지울 수 없으므로 서버에서 처리)
+//
+// 관리자 전용이다. 예전에는 회원이 스스로 호출하는 resetMyAccount 였는데,
+// 실수로 전체 기록을 날리는 사고가 나서 관리자만 수행하도록 바꿨다.
+// UI 에서 감추는 것만으로는 SDK 직접 호출을 막을 수 없어 함수를 교체했다.
+const resetAccountData = async (uid) => {
   // 1) 내가 쓴 보고서 삭제(하위 포함).
   const reports = await db.collection("reports")
       .where("authorId", "==", uid).get();
@@ -279,6 +280,13 @@ exports.resetMyAccount = onCall(async (request) => {
   await db.recursiveDelete(db.collection("users").doc(uid));
 
   logger.info("account reset", {uid});
+};
+
+exports.resetMemberAccount = onCall(async (request) => {
+  await assertAdmin(request);
+  const uid = request.data && request.data.uid;
+  if (!uid) throw new HttpsError("invalid-argument", "회원이 필요합니다.");
+  await resetAccountData(uid);
   return {ok: true};
 });
 

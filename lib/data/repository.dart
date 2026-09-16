@@ -134,7 +134,9 @@ abstract class AppRepository {
   // ── 앱 초기화 ──
   /// 내 서버 데이터(보고서·쿠폰·출석·멤버십·프로필/설정) 전체 삭제.
   /// 호출 후 로그아웃을 수행한다.
-  Future<void> resetMyAccount();
+  /// 관리자 전용: 한 회원의 서버 데이터를 모두 삭제한다.
+  /// (회원 스스로 초기화하는 기능은 사고 방지를 위해 제거됨)
+  Future<void> resetMemberAccount(String uid);
 
   // ── 관리자: 멤버 계정 찾기/비밀번호 재설정 ──
   /// 관리자: 그룹 멤버들의 로그인 아이디(이메일) 조회.

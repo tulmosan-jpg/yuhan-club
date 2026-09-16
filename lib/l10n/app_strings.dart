@@ -352,6 +352,14 @@ const Map<String, List<String>> _dict = {
   'reset_confirm': ['초기화', 'Reset'],
   'reset_done': ['초기화됐어요.', 'Reset complete.'],
   'reset_failed': ['초기화에 실패했어요. 잠시 후 다시 시도해주세요.', 'Reset failed. Please try again.'],
+  // 관리자: 회원 계정 초기화
+  'reset_member': ['계정 초기화', 'Reset account'],
+  'reset_member_title': ['회원 계정을 초기화할까요?', 'Reset this member?'],
+  'reset_member_body': [
+    '{name} 님의 보고서·출석·리워드 쿠폰·멘토 가입·프로필/설정이 모두 삭제됩니다.\n로그인 계정은 남아 있어 다시 이용할 수 있어요.\n이 작업은 되돌릴 수 없습니다.',
+    'All reports, attendance, coupons, mentor membership, and profile/settings for {name} will be permanently deleted. The login account remains usable. This cannot be undone.'
+  ],
+  'reset_member_done': ['{name} 님의 계정을 초기화했어요.', 'Reset {name}\'s account.'],
   // 관리자: 멤버 계정 찾기/비밀번호 재설정
   'member_accounts': ['멤버 계정 관리', 'Member accounts'],
   'member_accounts_hint': [

@@ -5,13 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/app_config.dart';
 import '../../app/theme.dart';
 import '../../data/auth_service.dart';
 import '../../data/notification_service.dart';
-import '../../widgets/app_dialog.dart';
 import '../../data/profile_service.dart';
 import '../../data/repository.dart';
 import '../../data/attendance_logic.dart';
@@ -272,40 +270,6 @@ class _GreetingState extends State<_Greeting> {
     if (!AppConfig.useMock) await _profile.remove();
   }
 
-  /// 앱 초기화: 내 서버 데이터 삭제 + 멘토 탈퇴 + 로컬 설정 초기화 + 로그아웃.
-  Future<void> _resetApp() async {
-    final confirm = await showConfirmDialog(
-      context: context,
-      icon: Icons.warning_amber_rounded,
-      destructive: true,
-      title: tr(context, 'reset_app'),
-      message: tr(context, 'reset_app_warn'),
-      confirmText: tr(context, 'reset_confirm'),
-    );
-    if (!confirm || !mounted) return;
-    setState(() => _busy = true);
-    try {
-      await context.read<AppRepository>().resetMyAccount();
-      if (!AppConfig.useMock) {
-        final p = await SharedPreferences.getInstance();
-        await p.clear();
-        await NotificationService.instance.cancelAll();
-        if (!mounted) return;
-        await context.read<AuthService>().signOut(); // AuthGate → 로그인 화면
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(tr(context, 'reset_done'))));
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(tr(context, 'reset_failed'))));
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -352,8 +316,6 @@ class _GreetingState extends State<_Greeting> {
               if (!AppConfig.useMock) {
                 await context.read<AuthService>().signOut();
               }
-            } else if (v == 'reset') {
-              await _resetApp();
             }
           },
           itemBuilder: (context) => [
@@ -411,19 +373,6 @@ class _GreetingState extends State<_Greeting> {
                   const Icon(Icons.logout, size: 18),
                   const SizedBox(width: 8),
                   Text(tr(context, 'logout')),
-                ],
-              ),
-            ),
-            const PopupMenuDivider(),
-            PopupMenuItem(
-              value: 'reset',
-              child: Row(
-                children: [
-                  const Icon(Icons.restart_alt,
-                      size: 18, color: Color(0xFFE53E3E)),
-                  const SizedBox(width: 8),
-                  Text(tr(context, 'reset_app'),
-                      style: const TextStyle(color: Color(0xFFE53E3E))),
                 ],
               ),
             ),

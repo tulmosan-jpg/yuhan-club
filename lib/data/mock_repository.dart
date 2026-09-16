@@ -523,7 +523,7 @@ class MockRepository implements AppRepository {
   }
 
   @override
-  Future<void> resetMyAccount() async {
+  Future<void> resetMemberAccount(String uid) async {
     await _delay();
     _reports.clear();
     _coupons.clear();

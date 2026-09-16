@@ -574,9 +574,10 @@ class FirebaseRepository implements AppRepository {
   }
 
   @override
-  Future<void> resetMyAccount() async {
-    // 서버에서 내 데이터 일괄 삭제(체크인·쿠폰 등 클라 삭제 불가분 포함).
-    await _functions.httpsCallable('resetMyAccount').call();
+  Future<void> resetMemberAccount(String uid) async {
+    // 서버(관리자 전용)에서 해당 회원 데이터 일괄 삭제
+    // (체크인·쿠폰 등 클라이언트가 지울 수 없는 것 포함).
+    await _functions.httpsCallable('resetMemberAccount').call({'uid': uid});
   }
 
   @override
