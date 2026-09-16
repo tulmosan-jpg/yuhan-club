@@ -66,6 +66,9 @@ Widget _shell({required Widget child}) => Dialog(
     );
 
 /// 확인 다이얼로그. 확인 시 true. [destructive]면 액션 버튼이 빨강.
+///
+/// [showCancel] 을 끄면 액션 버튼만 전체폭으로 놓인다(강제 업데이트 등
+/// 물러설 선택지가 없는 경우). [barrierDismissible] 도 함께 꺼야 한다.
 Future<bool> showConfirmDialog({
   required BuildContext context,
   required String title,
@@ -74,10 +77,13 @@ Future<bool> showConfirmDialog({
   String? cancelText,
   IconData? icon,
   bool destructive = false,
+  bool showCancel = true,
+  bool barrierDismissible = true,
 }) async {
   final color = destructive ? _danger : AppTheme.brand500;
   final result = await showDialog<bool>(
     context: context,
+    barrierDismissible: barrierDismissible,
     builder: (dctx) => _shell(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -97,9 +103,11 @@ Future<bool> showConfirmDialog({
           const SizedBox(height: 26),
           Row(
             children: [
-              _cancelButton(dctx, cancelText ?? tr(dctx, 'cancel'),
-                  () => Navigator.pop(dctx, false)),
-              const SizedBox(width: 12),
+              if (showCancel) ...[
+                _cancelButton(dctx, cancelText ?? tr(dctx, 'cancel'),
+                    () => Navigator.pop(dctx, false)),
+                const SizedBox(width: 12),
+              ],
               _actionButton(
                   confirmText, color, () => Navigator.pop(dctx, true)),
             ],

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../app/app_config.dart';
 import '../l10n/app_strings.dart';
+import '../widgets/app_dialog.dart';
 
 /// 앱 업데이트 안내.
 ///
@@ -37,31 +38,26 @@ class UpdateService {
       if (!context.mounted) return;
       _shownThisSession = true;
 
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: !force,
-        builder: (dctx) => AlertDialog(
-          title: Text(tr(dctx, 'update_title'),
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-          content: Text(tr(dctx, 'update_body')),
-          actions: [
-            if (!force)
-              TextButton(
-                onPressed: () => Navigator.pop(dctx),
-                child: Text(tr(dctx, 'update_later')),
-              ),
-            FilledButton(
-              onPressed: () async {
-                if (url != null && url.isNotEmpty) {
-                  await launchUrl(Uri.parse(url),
-                      mode: LaunchMode.externalApplication);
-                }
-              },
-              child: Text(tr(dctx, 'update_now')),
-            ),
-          ],
-        ),
-      );
+      // 앱 공용 브랜드 다이얼로그(흰 카드 + 아이콘 배지 + 나란한 버튼).
+      // force 면 '나중에' 없이 액션만, 바깥 탭으로도 닫히지 않는다.
+      do {
+        final go = await showConfirmDialog(
+          context: context,
+          icon: Icons.system_update_alt_rounded,
+          title: tr(context, 'update_title'),
+          message: tr(context, 'update_body'),
+          confirmText: tr(context, 'update_now'),
+          cancelText: tr(context, 'update_later'),
+          showCancel: !force,
+          barrierDismissible: !force,
+        );
+        if (go && url != null && url.isNotEmpty) {
+          await launchUrl(Uri.parse(url),
+              mode: LaunchMode.externalApplication);
+        }
+        if (!context.mounted) return;
+        // 강제 업데이트면 스토어에 다녀와도 계속 막는다.
+      } while (force);
     } catch (_) {
       // 네트워크/설정 없음 → 조용히 무시.
     }
