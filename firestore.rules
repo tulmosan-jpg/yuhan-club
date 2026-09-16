@@ -85,16 +85,17 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // ── 리워드 설정/재고 ──
-    // 읽기: 로그인 사용자(재고·코드 확인). 쓰기: 관리자만(코드/재고 수정).
-    //  · 재고 차감은 claimCoupon Cloud Function(관리자 SDK)이 수행 → 규칙 우회.
-    // 앱 버전 게이트. 로그인 화면(미인증)에서도 읽어야 업데이트 안내를
-    // 띄울 수 있다. 최신 빌드번호와 스토어 URL 뿐이라 비공개 정보가 없다.
+    // ── 앱 버전 게이트 ──
+    // 로그인 화면(미인증)에서도 읽어야 업데이트 안내를 띄울 수 있다.
+    // 최신 빌드번호와 스토어 URL 뿐이라 비공개 정보가 없다.
     match /config/app {
       allow read: if true;
       allow write: if isAdmin();
     }
 
+    // ── 리워드 설정/재고 등 그 밖의 설정 ──
+    // 읽기: 로그인 사용자(재고·코드 확인). 쓰기: 관리자만(코드/재고 수정).
+    //  · 재고 차감은 claimCoupon Cloud Function(관리자 SDK)이 수행 → 규칙 우회.
     match /config/{doc} {
       allow read: if request.auth != null;
       allow write: if isAdmin();

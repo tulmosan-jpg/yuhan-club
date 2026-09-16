@@ -100,23 +100,51 @@ class AuthService {
 
   /// 새 관리자 계정을 만들고 Firebase Authentication + admins 컬렉션에 등록.
   /// 보조 FirebaseApp으로 계정을 생성해 현재 관리자 세션은 유지된다.
+  ///
+  /// 계정 생성과 admins 문서 작성은 두 단계라, 예전에는 중간에 실패하면
+  /// Authentication 에만 계정이 남고 관리자 목록에는 안 들어갔다. 그 상태로
+  /// 다시 시도하면 email-already-in-use 로 영영 등록되지 않았다.
+  /// 이제 이미 있는 계정이면 로그인해 uid 를 얻어 admins 문서만 마저 쓴다.
   Future<void> createAdmin({
     required String email,
     required String password,
     required String name,
   }) async {
+    // 앱 이름을 매번 다르게: 이전 시도가 정리되지 않아도 duplicate-app 이 안 난다.
+    final appName =
+        'adminCreator_${DateTime.now().microsecondsSinceEpoch}';
     final secondary = await Firebase.initializeApp(
-      name: 'adminCreator',
+      name: appName,
       options: DefaultFirebaseOptions.currentPlatform,
     );
     try {
       final secAuth = FirebaseAuth.instanceFor(app: secondary);
-      final cred = await secAuth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-      await cred.user?.updateDisplayName(name.trim());
-      final uid = cred.user!.uid;
+      User? user;
+      try {
+        final cred = await secAuth.createUserWithEmailAndPassword(
+          email: email.trim(),
+          password: password,
+        );
+        user = cred.user;
+        await user?.updateDisplayName(name.trim());
+      } on FirebaseAuthException catch (e) {
+        if (e.code != 'email-already-in-use') rethrow;
+        // 계정은 이미 있다(이전 시도의 잔여물이거나 기존 회원).
+        // 비밀번호가 맞으면 uid 를 얻어 관리자 등록만 마저 진행한다.
+        final cred = await secAuth.signInWithEmailAndPassword(
+          email: email.trim(),
+          password: password,
+        );
+        user = cred.user;
+      }
+
+      final uid = user?.uid;
+      if (uid == null) {
+        throw FirebaseAuthException(
+            code: 'admin-create-no-uid',
+            message: '계정 uid 를 확인하지 못했습니다.');
+      }
+
       // 현재 로그인된 관리자 권한으로 admins 문서 작성.
       await _db.collection('admins').doc(uid).set({
         'email': email.trim(),

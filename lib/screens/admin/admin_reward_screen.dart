@@ -78,9 +78,21 @@ class _AdminRewardScreenState extends State<AdminRewardScreen> {
     );
     if (s == null || !mounted) return;
     final v = int.tryParse(s.trim()) ?? current;
-    await context.read<AppRepository>().setDrinkStock(d.id, v);
-    if (!mounted) return;
-    _reload();
+    setState(() => _busy = true);
+    try {
+      await context.read<AppRepository>().setDrinkStock(d.id, v);
+      if (!mounted) return;
+      _reload();
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'stock_saved'))));
+    } catch (e) {
+      // 예전에는 예외가 조용히 삼켜져 "변경이 안 된다"로만 보였다.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${tr(context, 'stock_save_failed')}: $e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override

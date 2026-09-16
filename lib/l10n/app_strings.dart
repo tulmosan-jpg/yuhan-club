@@ -42,6 +42,8 @@ const Map<String, List<String>> _dict = {
   'use_admin_login': ['관리자 계정입니다. 관리자 로그인을 이용하세요.', 'This is an admin account. Please use admin login.'],
   'admin_check_failed': ['권한 확인에 실패했어요. 네트워크를 확인해주세요.', 'Could not verify your permissions. Please check your network.'],
   'retry': ['다시 시도', 'Retry'],
+  'stock_saved': ['재고를 변경했어요.', 'Stock updated.'],
+  'stock_save_failed': ['재고 변경 실패', 'Failed to update stock'],
   'update_title': ['새 버전이 있어요', 'Update available'],
   'update_body': ['더 나은 사용을 위해 최신 버전으로 업데이트해주세요.', 'Please update to the latest version for the best experience.'],
   'update_now': ['업데이트', 'Update'],
