@@ -56,6 +56,44 @@ async function assertAdmin(request) {
   return uid;
 }
 
+/**
+ * 무차별 대입 방어: 계정별 실패 시도를 rate_limits/{key} 에 기록하고,
+ * 창(windowMs) 안에서 maxFails 회 넘게 실패하면 잠근다(cooldownMs).
+ * 코드 검증 함수(verifyJoinCode·redeemCoupon)에서 호출.
+ */
+async function assertNotThrottled(key, {maxFails, windowMs, cooldownMs}) {
+  const ref = db.collection("rate_limits").doc(key);
+  const now = Date.now();
+  const snap = await ref.get();
+  const d = snap.exists ? snap.data() : {};
+  if (d.lockedUntil && d.lockedUntil > now) {
+    throw new HttpsError("resource-exhausted", "too_many_attempts",
+        {reason: "too_many_attempts",
+          retryAfter: Math.ceil((d.lockedUntil - now) / 1000)});
+  }
+  // 창이 지났으면 카운터 리셋.
+  const windowStart = d.windowStart && (now - d.windowStart) < windowMs
+    ? d.windowStart : now;
+  return {ref, now, windowStart, fails: (d.windowStart === windowStart)
+    ? (d.fails || 0) : 0, maxFails, cooldownMs};
+}
+
+/** 시도 실패 기록(+1). 임계 초과 시 잠금 설정. */
+async function recordFailure(ctx) {
+  const {ref, now, windowStart, fails, maxFails, cooldownMs} = ctx;
+  const next = fails + 1;
+  const payload = {windowStart, fails: next, updatedAt: now};
+  if (next >= maxFails) payload.lockedUntil = now + cooldownMs;
+  await ref.set(payload, {merge: true});
+}
+
+/** 시도 성공 → 카운터 초기화. */
+async function clearFailures(ctx) {
+  await ctx.ref.set(
+      {windowStart: 0, fails: 0, lockedUntil: 0, updatedAt: ctx.now},
+      {merge: true});
+}
+
 /** admins 컬렉션의 uid 목록. */
 async function adminUids() {
   const snap = await db.collection("admins").get();
@@ -196,17 +234,21 @@ exports.verifyJoinCode = onCall(async (request) => {
   if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
   const code = String((request.data && request.data.code) || "").trim();
   if (!code) throw new HttpsError("invalid-argument", "가입코드가 필요합니다.");
+  // 계정당 10분에 5회 실패 → 30분 잠금(가입코드 전수조사 차단).
+  const ctx = await assertNotThrottled(`joincode_${uid}`,
+      {maxFails: 5, windowMs: 10 * 60 * 1000, cooldownMs: 30 * 60 * 1000});
   const snap = await db.collection("secrets").doc("join_code").get();
   const expected = String((snap.data() || {}).code || "").trim();
   if (!expected) {
-    // 관리자가 아직 코드를 설정하지 않음 → 가입 불가로 처리.
     throw new HttpsError("failed-precondition", "join_code_not_set",
         {reason: "join_code_not_set"});
   }
   if (code !== expected) {
+    await recordFailure(ctx);
     throw new HttpsError("permission-denied", "bad_join_code",
         {reason: "bad_join_code"});
   }
+  await clearFailures(ctx);
   await db.collection("members_verified").doc(uid).set({
     via: "code",
     verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -282,11 +324,20 @@ exports.claimCoupon = onCall(async (request) => {
     // 재고는 쿠폰을 '받는(발급)' 시점에 차감한다.
     const newStock = Object.assign({}, stock);
     newStock[drinkId] = remaining - 1;
-    const u = userSnap.data() || {};
+    // 수령자 이름은 위조 방지를 위해 서버가 관리하는 값만 쓴다.
+    // (users/{uid}.name 은 사용자가 자유롭게 바꿀 수 있어 명단이 오염됨)
+    // 우선순위: Auth displayName(토큰) → Auth 레코드 → '회원'.
+    let verifiedName = (request.auth.token && request.auth.token.name) || "";
+    if (!verifiedName) {
+      try {
+        const rec = await admin.auth().getUser(uid);
+        verifiedName = rec.displayName || "";
+      } catch (_) {}
+    }
     tx.set(cfgRef, {stock: newStock}, {merge: true});
     tx.set(couponRef, {
       userId: uid,
-      userName: u.name || (request.auth.token && request.auth.token.name) || "회원",
+      userName: verifiedName || "회원",
       drinkId,
       drinkName: DRINK_NAMES[drinkId],
       issuedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -408,6 +459,9 @@ exports.redeemCoupon = onCall(async (request) => {
   if (String(signature).length > 300000 || String(receipt).length > 500000) {
     throw new HttpsError("invalid-argument", "증빙 이미지가 너무 큽니다.");
   }
+  // 계정당 10분에 5회 실패 → 30분 잠금(직원 4자리 코드 전수조사 차단).
+  const ctx = await assertNotThrottled(`redeem_${uid}`,
+      {maxFails: 5, windowMs: 10 * 60 * 1000, cooldownMs: 30 * 60 * 1000});
   // 직원 확인 코드는 secrets/rewards_code(관리자만 읽기)에 둔다.
   // 예전에는 config/rewards.code 에 있어 로그인한 누구나 읽을 수 있었다 →
   // 남아 있으면 새 위치로 옮기고 노출 위치에서 지운다(1회 자동 이관).
@@ -424,8 +478,10 @@ exports.redeemCoupon = onCall(async (request) => {
     }
   }
   if (!cfgCode || cfgCode !== String(code).trim()) {
+    await recordFailure(ctx);
     return {ok: false, reason: "bad_code"};
   }
+  await clearFailures(ctx);
   const ref = db.collection("coupons").doc(couponId);
   const snap = await ref.get();
   if (!snap.exists) return {ok: false, reason: "not_found"};

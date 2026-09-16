@@ -26,7 +26,9 @@ service cloud.firestore {
     // ── 그룹(팀) ──
     // 그룹 문서(이름+PIN): 멤버/관리자만 읽기, 관리자만 쓰기.
     match /groups/{gid} {
-      allow read: if isAdmin() || isGroupMember(gid);
+      // 그룹 본문서에는 PIN 이 들어 있어 관리자만 읽는다.
+      // (멤버는 group_index/{gid} 로 이름만 확인 → PIN 유출 방지)
+      allow read: if isAdmin();
       allow write: if isAdmin();
 
       // 멤버십: 본인이 올바른 PIN을 제출하면 가입.
@@ -92,6 +94,12 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // ── 무차별 대입 방어 카운터(서버 전용) ──
+    // Cloud Functions(Admin SDK)만 읽고 쓴다. 클라이언트 접근 차단.
+    match /rate_limits/{key} {
+      allow read, write: if false;
+    }
+
     // ── 가입코드 인증 마크 ──
     // verifyJoinCode 함수만 기록한다(클라이언트 쓰기 금지 → 위조 불가).
     match /members_verified/{userId} {
@@ -126,6 +134,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // 보고서 문서 검증: 본문/제목 길이, 사진 개수·크기 상한, 필드 화이트리스트.
+    // 규칙 우회 직접 쓰기로 거대 문서를 대량 생성하는 비용성 남용을 차단.
+    function isValidReport(d) {
+      return d.title is string && d.title.size() <= 200
+        && d.content is string && d.content.size() <= 5000
+        && (!('feedback' in d) || d.feedback == null
+            || (d.feedback is string && d.feedback.size() <= 2000))
+        && (!('photos' in d) || d.photos == null
+            || (d.photos is list && d.photos.size() <= 4))
+        && (!('authorName' in d) || (d.authorName is string
+            && d.authorName.size() <= 40));
+    }
+
     // ── 동아리 보고서 ──
     // 열람: 작성자 본인, 관리자, 또는 같은 그룹 멤버(그룹 지정된 경우).
     // 생성: authorId=본인 강제 + 본인이 속한 그룹(멘토)만 지정 가능
@@ -138,10 +159,13 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.groupId != null
-        && isGroupMember(request.resource.data.groupId);
+        && isGroupMember(request.resource.data.groupId)
+        && isValidReport(request.resource.data);
       allow update: if request.auth != null
         && request.auth.uid == resource.data.authorId
-        && request.resource.data.authorId == resource.data.authorId;
+        && request.resource.data.authorId == resource.data.authorId
+        && request.resource.data.groupId == resource.data.groupId
+        && isValidReport(request.resource.data);
       allow delete: if isAdmin() || (request.auth != null
         && request.auth.uid == resource.data.authorId);
     }
@@ -161,9 +185,14 @@ service cloud.firestore {
     match /attendance/{userId}/days/{day} {
       allow read: if isAdmin()
         || (request.auth != null && request.auth.uid == userId);
+      // 본인 uid + userId 일치 + 등록된 출석 가능일 + 최소 필드 검증.
       allow create: if request.auth != null
         && request.auth.uid == userId
         && request.resource.data.userId == userId
+        && request.resource.data.keys().hasOnly(['userId', 'userName', 'date'])
+        && (!('userName' in request.resource.data)
+            || (request.resource.data.userName is string
+                && request.resource.data.userName.size() <= 40))
         && exists(/databases/$(database)/documents/attendance_dates/$(day));
       allow update, delete: if false;
     }
