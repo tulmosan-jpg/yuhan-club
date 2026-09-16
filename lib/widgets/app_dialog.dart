@@ -53,6 +53,45 @@ Widget _actionButton(String label, Color color, VoidCallback onTap) => Expanded(
       ),
     );
 
+Widget _choiceChip({
+  required String label,
+  required IconData icon,
+  required bool selected,
+  required Color color,
+  required VoidCallback onTap,
+}) =>
+    Expanded(
+      child: Material(
+        color: selected ? color.withValues(alpha: 0.12) : Colors.white,
+        borderRadius: BorderRadius.circular(_btnRadius),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(_btnRadius),
+          child: Container(
+            height: 52,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(_btnRadius),
+              border: Border.all(
+                  color: selected ? color : _border,
+                  width: selected ? 1.6 : 1),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: selected ? color : _cancelFg),
+                const SizedBox(width: 6),
+                Text(label,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: selected ? color : _cancelFg)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
 Widget _shell({required Widget child}) => Dialog(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.white,
@@ -191,6 +230,101 @@ Future<String?> showInputDialog({
             ],
           ),
         ],
+      ),
+    ),
+  );
+}
+
+/// 참석/불참 응답 다이얼로그(멘티 출석 RSVP).
+/// 저장 시 (available, reason), 취소 null.
+Future<({bool available, String reason})?> showRsvpDialog({
+  required BuildContext context,
+  required String title,
+  required String availableLabel,
+  required String unavailableLabel,
+  required String reasonLabel,
+  required String reasonHint,
+  required String confirmText,
+  bool initialAvailable = true,
+  String initialReason = '',
+}) {
+  var available = initialAvailable;
+  final reasonCtrl = TextEditingController(text: initialReason);
+  return showDialog<({bool available, String reason})>(
+    context: context,
+    builder: (dctx) => StatefulBuilder(
+      builder: (dctx, setLocal) => _shell(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(child: _iconBadge(Icons.event_available, AppTheme.brand500)),
+            const SizedBox(height: 18),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 19, fontWeight: FontWeight.bold, color: _title)),
+            const SizedBox(height: 20),
+            // 참석 / 불참 — 선택된 쪽만 채워진 알약 버튼.
+            Row(
+              children: [
+                _choiceChip(
+                  label: availableLabel,
+                  icon: Icons.check_circle_outline,
+                  selected: available,
+                  color: AppTheme.brand500,
+                  onTap: () => setLocal(() => available = true),
+                ),
+                const SizedBox(width: 10),
+                _choiceChip(
+                  label: unavailableLabel,
+                  icon: Icons.cancel_outlined,
+                  selected: !available,
+                  color: _danger,
+                  onTap: () => setLocal(() => available = false),
+                ),
+              ],
+            ),
+            // 불참일 때만 사유 입력.
+            if (!available) ...[
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(reasonLabel,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _muted)),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: reasonCtrl,
+                maxLines: 2,
+                style: const TextStyle(fontSize: 15, color: _title),
+                decoration: _filledInput(reasonHint),
+              ),
+            ],
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                _cancelButton(
+                    dctx, tr(dctx, 'cancel'), () => Navigator.pop(dctx, null)),
+                const SizedBox(width: 12),
+                _actionButton(
+                  confirmText,
+                  AppTheme.brand500,
+                  () => Navigator.pop(
+                    dctx,
+                    (
+                      available: available,
+                      reason: available ? '' : reasonCtrl.text.trim(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     ),
   );

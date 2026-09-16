@@ -95,58 +95,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (gid == null) return;
     final key = AttendanceRecord.keyOf(AttendanceRecord.dayOf(day));
     final existing = _rsvp[key];
-    bool available = existing?.available ?? true;
-    final reasonCtrl = TextEditingController(text: existing?.reason ?? '');
-    final saved = await showDialog<bool>(
+    final res = await showRsvpDialog(
       context: context,
-      builder: (dctx) => StatefulBuilder(
-        builder: (dctx, setLocal) => AlertDialog(
-          title: Text(tr(context, 'rsvp_title',
-              {'date': DateFormat('M/d (E)', 'ko').format(day)})),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SegmentedButton<bool>(
-                segments: [
-                  ButtonSegment(
-                      value: true,
-                      icon: const Icon(Icons.check_circle_outline, size: 18),
-                      label: Text(tr(context, 'rsvp_available'))),
-                  ButtonSegment(
-                      value: false,
-                      icon: const Icon(Icons.cancel_outlined, size: 18),
-                      label: Text(tr(context, 'rsvp_unavailable'))),
-                ],
-                selected: {available},
-                onSelectionChanged: (s) => setLocal(() => available = s.first),
-              ),
-              if (!available) ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: reasonCtrl,
-                  maxLines: 2,
-                  decoration: InputDecoration(
-                    labelText: tr(context, 'rsvp_reason'),
-                    hintText: tr(context, 'rsvp_reason_hint'),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(dctx, false),
-                child: Text(tr(context, 'cancel'))),
-            FilledButton(
-                onPressed: () => Navigator.pop(dctx, true),
-                child: Text(tr(context, 'save'))),
-          ],
-        ),
-      ),
+      title: tr(context, 'rsvp_title',
+          {'date': DateFormat('M/d (E)', 'ko').format(day)}),
+      availableLabel: tr(context, 'rsvp_available'),
+      unavailableLabel: tr(context, 'rsvp_unavailable'),
+      reasonLabel: tr(context, 'rsvp_reason'),
+      reasonHint: tr(context, 'rsvp_reason_hint'),
+      confirmText: tr(context, 'save'),
+      initialAvailable: existing?.available ?? true,
+      initialReason: existing?.reason ?? '',
     );
-    if (saved != true || !mounted) return;
-    await context.read<AppRepository>().setRsvp(
-        gid, day, available, available ? '' : reasonCtrl.text);
+    if (res == null || !mounted) return;
+    await context
+        .read<AppRepository>()
+        .setRsvp(gid, day, res.available, res.reason);
     if (!mounted) return;
     setState(_reload);
     ScaffoldMessenger.of(context).showSnackBar(

@@ -146,11 +146,25 @@ class AuthService {
       }
 
       // 현재 로그인된 관리자 권한으로 admins 문서 작성.
-      await _db.collection('admins').doc(uid).set({
+      final doc = _db.collection('admins').doc(uid);
+      await doc.set({
         'email': email.trim(),
         'name': name.trim(),
         'grantedAt': FieldValue.serverTimestamp(),
       });
+
+      // 서버에 실제로 반영됐는지 확인한다.
+      // Firestore 는 오프라인 캐시가 기본이라 서버가 거부한 쓰기도 로컬에는
+      // 즉시 반영된다. 그러면 추가한 기기 목록에만 보이고 다른 기기에서는
+      // 안 보이는 상태가 된다 — 여기서 잡아 실패로 알린다.
+      final saved = await doc.get(const GetOptions(source: Source.server));
+      if (!saved.exists) {
+        throw FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'admin-write-not-synced',
+          message: '관리자 등록이 서버에 저장되지 않았습니다. 네트워크를 확인해주세요.',
+        );
+      }
       await secAuth.signOut();
     } finally {
       await secondary.delete();
@@ -159,7 +173,16 @@ class AuthService {
 
   /// 현재 관리자 목록.
   Future<List<AdminInfo>> listAdmins() async {
-    final snap = await _db.collection('admins').get();
+    // 서버에서 직접 읽는다. 캐시를 읽으면 서버가 거부한 로컬 쓰기가
+    // 그 기기 목록에만 남아 다른 기기와 어긋난다.
+    QuerySnapshot<Map<String, dynamic>> snap;
+    try {
+      snap = await _db
+          .collection('admins')
+          .get(const GetOptions(source: Source.server));
+    } catch (_) {
+      snap = await _db.collection('admins').get(); // 오프라인이면 캐시
+    }
     return snap.docs.map((d) {
       final m = d.data();
       return AdminInfo(
