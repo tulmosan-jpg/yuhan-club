@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -64,16 +65,45 @@ class AuthService {
     }
   }
 
-  /// 회원가입 후 이름을 displayName에 저장.
+  /// 회원가입: 계정 생성 → 학과 가입코드 서버 검증 → 이름 저장.
+  ///
+  /// 가입코드가 틀리면 방금 만든 계정을 지우고 예외를 던진다.
+  /// (Firebase Auth 계정 생성 자체는 막을 수 없으므로, 서버가 남기는
+  /// 인증 마크(members_verified)가 실질적인 회원 자격이 된다 —
+  /// 리워드 발급이 이 마크를 요구한다.)
   Future<void> signUp({
     required String email,
     required String password,
     required String name,
+    required String joinCode,
   }) async {
     final cred = await _auth.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
+    try {
+      await FirebaseFunctions.instance
+          .httpsCallable('verifyJoinCode')
+          .call({'code': joinCode.trim()});
+    } catch (e) {
+      // 인증 실패 → 계정 롤백(방금 생성해 재인증 없이 삭제 가능).
+      try {
+        await cred.user?.delete();
+      } catch (_) {
+        await _auth.signOut();
+      }
+      if (e is FirebaseFunctionsException) {
+        final reason = (e.details is Map)
+            ? (e.details as Map)['reason'] as String?
+            : null;
+        throw FirebaseAuthException(
+            code: reason == 'join_code_not_set'
+                ? 'join-code-not-set'
+                : 'bad-join-code',
+            message: e.message);
+      }
+      rethrow;
+    }
     await cred.user?.updateDisplayName(name.trim());
     await cred.user?.reload();
   }
@@ -198,6 +228,18 @@ class AuthService {
   Future<void> removeAdmin(String uid) =>
       _db.collection('admins').doc(uid).delete();
 
+  // ── 학과 가입코드 (관리자 전용, secrets/join_code) ──
+
+  Future<String> fetchJoinCode() async {
+    final snap = await _db.collection('secrets').doc('join_code').get();
+    return (snap.data()?['code'] as String?) ?? '';
+  }
+
+  Future<void> setJoinCode(String code) => _db
+      .collection('secrets')
+      .doc('join_code')
+      .set({'code': code.trim()}, SetOptions(merge: true));
+
   Future<void> sendPasswordReset(String email) async {
     // 재설정 메일과 링크가 여는 페이지(만료/오류 안내 포함)를 한국어로.
     await _auth.setLanguageCode('ko');
@@ -224,6 +266,10 @@ class AuthService {
           return 'auth_network';
         case 'too-many-requests':
           return 'auth_too_many';
+        case 'bad-join-code':
+          return 'join_code_wrong';
+        case 'join-code-not-set':
+          return 'join_code_not_set';
       }
       return 'auth_generic';
     }

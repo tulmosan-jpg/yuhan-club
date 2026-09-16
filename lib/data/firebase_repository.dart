@@ -499,7 +499,8 @@ class FirebaseRepository implements AppRepository {
           RewardConfig.defaultStock[d.id] ??
           0;
     }
-    return RewardConfig(code: (data?['code'] as String?) ?? '', stock: stock);
+    // code 는 이제 secrets 로 이전 — 회원 화면은 재고만 필요하다.
+    return RewardConfig(code: '', stock: stock);
   }
 
   @override
@@ -509,8 +510,25 @@ class FirebaseRepository implements AppRepository {
   }
 
   @override
+  Future<String> fetchRewardCode() async {
+    // 직원 확인 코드는 secrets/rewards_code(관리자만 읽기)에 있다.
+    // 이관 전 데이터를 위해 비어 있으면 레거시 위치를 본다.
+    final sec = await _db.collection('secrets').doc('rewards_code').get();
+    final code = (sec.data()?['code'] as String?) ?? '';
+    if (code.isNotEmpty) return code;
+    final legacy = await _rewardConfigDoc.get();
+    return (legacy.data()?['code'] as String?) ?? '';
+  }
+
+  @override
   Future<void> setRewardCode(String code) async {
-    await _rewardConfigDoc.set({'code': code.trim()}, SetOptions(merge: true));
+    // 새 위치에 저장하고, 노출되던 레거시 필드는 지운다.
+    await _db
+        .collection('secrets')
+        .doc('rewards_code')
+        .set({'code': code.trim()}, SetOptions(merge: true));
+    await _rewardConfigDoc.set(
+        {'code': FieldValue.delete()}, SetOptions(merge: true));
   }
 
   @override

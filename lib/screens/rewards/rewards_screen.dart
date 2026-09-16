@@ -100,9 +100,11 @@ class _RewardsScreenState extends State<RewardsScreen> {
           ? tr(context, 'reward_has_unused')
           : s.contains('daily_limit')
               ? tr(context, 'reward_claimed_today')
-              : s.contains('resource-exhausted') || s.contains('sold_out')
-                  ? tr(context, 'coupon_sold_out')
-                  : tr(context, 'coupon_failed');
+              : s.contains('join_code_required')
+                  ? tr(context, 'reward_needs_join_code')
+                  : s.contains('resource-exhausted') || s.contains('sold_out')
+                      ? tr(context, 'coupon_sold_out')
+                      : tr(context, 'coupon_failed');
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(msg)));
       await _load();

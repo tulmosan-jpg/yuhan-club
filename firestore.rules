@@ -85,6 +85,21 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // ── 서버 전용 시크릿(직원 확인 코드·가입코드) ──
+    // 검증은 Cloud Functions(관리자 SDK)가 수행. 관리자만 열람/수정.
+    // config 컬렉션은 로그인 사용자 전체가 읽으므로 시크릿은 여기 둔다.
+    match /secrets/{doc} {
+      allow read, write: if isAdmin();
+    }
+
+    // ── 가입코드 인증 마크 ──
+    // verifyJoinCode 함수만 기록한다(클라이언트 쓰기 금지 → 위조 불가).
+    match /members_verified/{userId} {
+      allow read: if isAdmin()
+        || (request.auth != null && request.auth.uid == userId);
+      allow write: if false;
+    }
+
     // ── 앱 버전 게이트 ──
     // 로그인 화면(미인증)에서도 읽어야 업데이트 안내를 띄울 수 있다.
     // 최신 빌드번호와 스토어 URL 뿐이라 비공개 정보가 없다.

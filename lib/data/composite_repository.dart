@@ -90,6 +90,8 @@ class CompositeRepository implements AppRepository {
   @override
   Future<void> setRewardCode(String code) => base.setRewardCode(code);
   @override
+  Future<String> fetchRewardCode() => base.fetchRewardCode();
+  @override
   Future<void> setDrinkStock(String id, int count) =>
       base.setDrinkStock(id, count);
   @override

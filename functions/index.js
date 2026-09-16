@@ -186,6 +186,56 @@ function dayKey(d) {
 }
 
 // ── 쿠폰 발급(일일 1개 + 미사용 쿠폰 없음 + 재고 차감, 원자적) ──
+// ── 가입코드 인증 ────────────────────────────────────────────────
+// 회원가입 시 학과 가입코드를 검증하고, 위조할 수 없는 인증 마크
+// (members_verified/{uid}, 규칙상 클라이언트 쓰기 금지)를 남긴다.
+// 리워드 발급이 이 마크를 요구하므로 코드 없이 계정만 만든 외부인은
+// 리워드를 쓸 수 없다.
+exports.verifyJoinCode = onCall(async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  const code = String((request.data && request.data.code) || "").trim();
+  if (!code) throw new HttpsError("invalid-argument", "가입코드가 필요합니다.");
+  const snap = await db.collection("secrets").doc("join_code").get();
+  const expected = String((snap.data() || {}).code || "").trim();
+  if (!expected) {
+    // 관리자가 아직 코드를 설정하지 않음 → 가입 불가로 처리.
+    throw new HttpsError("failed-precondition", "join_code_not_set",
+        {reason: "join_code_not_set"});
+  }
+  if (code !== expected) {
+    throw new HttpsError("permission-denied", "bad_join_code",
+        {reason: "bad_join_code"});
+  }
+  await db.collection("members_verified").doc(uid).set({
+    via: "code",
+    verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, {merge: true});
+  return {ok: true};
+});
+
+// 가입코드 제도 도입 시점. 이전에 만들어진 계정(기존 회원)은 자동 인정.
+const JOIN_CODE_CUTOFF = Date.parse("2026-09-16T15:00:00Z");
+
+/** 리워드 발급 자격: 인증 마크 보유, 또는 제도 도입 전 가입한 기존 회원. */
+async function assertVerifiedMember(uid) {
+  const ref = db.collection("members_verified").doc(uid);
+  const snap = await ref.get();
+  if (snap.exists) return;
+  const rec = await admin.auth().getUser(uid);
+  const created = Date.parse(rec.metadata.creationTime);
+  if (created < JOIN_CODE_CUTOFF) {
+    // 기존 회원: 무중단으로 자동 인정하고 마크를 남긴다.
+    await ref.set({
+      via: "grandfathered",
+      verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, {merge: true});
+    return;
+  }
+  throw new HttpsError("permission-denied", "join_code_required",
+      {reason: "join_code_required"});
+}
+
 exports.claimCoupon = onCall(async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
@@ -193,6 +243,8 @@ exports.claimCoupon = onCall(async (request) => {
   if (!DRINK_NAMES[drinkId]) {
     throw new HttpsError("invalid-argument", "잘못된 음료입니다.");
   }
+  // 학과 가입코드로 인증된 회원(또는 기존 회원)만 발급.
+  await assertVerifiedMember(uid);
 
   const userRef = db.collection("users").doc(uid);
   const cfgRef = db.collection("config").doc("rewards");
@@ -353,10 +405,22 @@ exports.redeemCoupon = onCall(async (request) => {
   if (String(signature).length > 300000 || String(receipt).length > 500000) {
     throw new HttpsError("invalid-argument", "증빙 이미지가 너무 큽니다.");
   }
-  // 재고는 발급 시 이미 차감됨 → 사용 시엔 상태(used)만 표시하고 재고는 유지.
-  const cfgSnap = await db.collection("config").doc("rewards").get();
-  const cfgCode = (cfgSnap.data() || {}).code || "";
-  if (!cfgCode || String(cfgCode) !== String(code).trim()) {
+  // 직원 확인 코드는 secrets/rewards_code(관리자만 읽기)에 둔다.
+  // 예전에는 config/rewards.code 에 있어 로그인한 누구나 읽을 수 있었다 →
+  // 남아 있으면 새 위치로 옮기고 노출 위치에서 지운다(1회 자동 이관).
+  let cfgCode = "";
+  const secSnap = await db.collection("secrets").doc("rewards_code").get();
+  cfgCode = String((secSnap.data() || {}).code || "");
+  if (!cfgCode) {
+    const legacy = await db.collection("config").doc("rewards").get();
+    cfgCode = String((legacy.data() || {}).code || "");
+    if (cfgCode) {
+      await db.collection("secrets").doc("rewards_code").set({code: cfgCode});
+      await db.collection("config").doc("rewards").set(
+          {code: admin.firestore.FieldValue.delete()}, {merge: true});
+    }
+  }
+  if (!cfgCode || cfgCode !== String(code).trim()) {
     return {ok: false, reason: "bad_code"};
   }
   const ref = db.collection("coupons").doc(couponId);

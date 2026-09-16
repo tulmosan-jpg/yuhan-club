@@ -25,10 +25,39 @@ class _AdminManageScreenState extends State<AdminManageScreen> {
   bool _obscure = true;
   late Future<List<AdminInfo>> _admins;
 
+  // 학과 가입코드(회원가입 시 필요). secrets/join_code — 관리자만 접근.
+  final _joinCode = TextEditingController();
+  bool _joinCodeSaving = false;
+
   @override
   void initState() {
     super.initState();
     _reload();
+    context.read<AuthService>().fetchJoinCode().then((c) {
+      if (mounted && _joinCode.text.isEmpty) _joinCode.text = c;
+    }).catchError((_) {});
+  }
+
+  Future<void> _saveJoinCode() async {
+    final code = _joinCode.text.trim();
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'err_join_code'))));
+      return;
+    }
+    setState(() => _joinCodeSaving = true);
+    try {
+      await context.read<AuthService>().setJoinCode(code);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'join_code_saved'))));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _joinCodeSaving = false);
+    }
   }
 
   void _reload() {
@@ -40,6 +69,7 @@ class _AdminManageScreenState extends State<AdminManageScreen> {
     _email.dispose();
     _password.dispose();
     _name.dispose();
+    _joinCode.dispose();
     super.dispose();
   }
 
@@ -182,6 +212,42 @@ class _AdminManageScreenState extends State<AdminManageScreen> {
                 ),
               ],
             ),
+          ),
+
+          const Divider(height: 40),
+
+          // ── 학과 가입코드 ──
+          Text(tr(context, 'join_code_section'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(tr(context, 'join_code_hint'),
+              style: TextStyle(fontSize: 12.5, color: Colors.grey.shade500)),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _joinCode,
+                  decoration: InputDecoration(
+                    labelText: tr(context, 'join_code'),
+                    prefixIcon: const Icon(Icons.vpn_key_outlined),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: _joinCodeSaving ? null : _saveJoinCode,
+                style: FilledButton.styleFrom(
+                    minimumSize: const Size(80, 52)),
+                child: _joinCodeSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : Text(tr(context, 'save')),
+              ),
+            ],
           ),
 
           const Divider(height: 40),

@@ -48,9 +48,10 @@ class _AdminRewardScreenState extends State<AdminRewardScreen> {
     final results = await Future.wait([
       repo.fetchRewardConfig(),
       repo.fetchAllCoupons(),
+      repo.fetchRewardCode(), // 직원 코드는 secrets(관리자 전용)에서
     ]);
     final cfg = results[0] as RewardConfig;
-    _codeCtrl.text = cfg.code;
+    _codeCtrl.text = results[2] as String;
     return _RewardAdminData(cfg, results[1] as List<Coupon>);
   }
 

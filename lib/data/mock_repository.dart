@@ -433,6 +433,12 @@ class MockRepository implements AppRepository {
   }
 
   @override
+  Future<String> fetchRewardCode() async {
+    await _delay();
+    return _rewardCode;
+  }
+
+  @override
   Future<void> setRewardCode(String code) async {
     await _delay();
     _rewardCode = code.trim();

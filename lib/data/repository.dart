@@ -113,6 +113,9 @@ abstract class AppRepository {
   /// 관리자: 사용완료 코드(4자리) 설정.
   Future<void> setRewardCode(String code);
 
+  /// 관리자 전용: 현재 직원 확인 코드 조회.
+  Future<String> fetchRewardCode();
+
   /// 관리자: 종목별 재고 설정.
   Future<void> setDrinkStock(String drinkId, int count);
 

@@ -19,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _joinCode = TextEditingController(); // 학과 가입코드(회원가입 시)
 
   bool _isSignUp = false;
   bool _obscure = true;
@@ -45,6 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _name.dispose();
     _email.dispose();
     _password.dispose();
+    _joinCode.dispose();
     super.dispose();
   }
 
@@ -85,6 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
           email: _email.text,
           password: _password.text,
           name: _name.text,
+          joinCode: _joinCode.text,
         );
         auth.loggedInAsAdmin = false;
       } else {
@@ -236,7 +239,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 28),
                     ],
 
-                    // ── 이름 (일반 회원가입 시) ──
+                    // ── 이름 + 학과 가입코드 (일반 회원가입 시) ──
                     if (_isSignUp) ...[
                       _Field(
                         controller: _name,
@@ -245,6 +248,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         textInputAction: TextInputAction.next,
                         validator: (v) => (v == null || v.trim().isEmpty)
                             ? tr(context, 'err_name')
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      _Field(
+                        controller: _joinCode,
+                        hint: tr(context, 'join_code'),
+                        icon: Icons.vpn_key_outlined,
+                        textInputAction: TextInputAction.next,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? tr(context, 'err_join_code')
                             : null,
                       ),
                       const SizedBox(height: 16),
