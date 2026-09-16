@@ -50,12 +50,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // 관리자 여부를 실제 admins 컬렉션으로 확인(세션 플래그 대신 → 재시작에도 견고).
-  late final Future<bool> _adminCheck =
-      context.read<AuthService>().checkIsAdmin();
+  late Future<bool> _adminCheck;
+
+  void _startAdminCheck() {
+    _adminCheck = context.read<AuthService>().checkIsAdmin();
+  }
 
   @override
   void initState() {
     super.initState();
+    _startAdminCheck();
     // 로그인 세션에서 FCM 토큰 등록 + 알림 설정 동기화(서버 푸시 수신).
     if (!AppConfig.useMock) {
       MessagingService.instance.start();
@@ -64,16 +68,46 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: _adminCheck,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        // 관리자 → 보고서/출석만. 일반 회원 → 전체 앱.
-        return snap.data == true ? const AdminHome() : _buildMemberShell(context);
+    final auth = context.read<AuthService>();
+    // 관리자 로그인 플래그는 signIn() 직후(= 이 화면이 이미 만들어진 뒤)에 켜지므로
+    // 리스닝해서 켜지는 즉시 관리자 화면으로 전환한다.
+    return ValueListenableBuilder<bool>(
+      valueListenable: auth.adminSession,
+      builder: (context, adminSession, _) {
+        if (adminSession) return const AdminHome();
+        return FutureBuilder<bool>(
+          future: _adminCheck,
+          builder: (context, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            // 확인 자체가 실패하면 회원 화면으로 떨어뜨리지 않고 재시도를 준다.
+            if (snap.hasError) {
+              return Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(tr(context, 'admin_check_failed')),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: () =>
+                            setState(_startAdminCheck),
+                        child: Text(tr(context, 'retry')),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            // 관리자 → 보고서/출석만. 일반 회원 → 전체 앱.
+            return snap.data == true
+                ? const AdminHome()
+                : _buildMemberShell(context);
+          },
+        );
       },
     );
   }

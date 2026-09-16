@@ -56,7 +56,20 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_adminMode) {
         // 관리자 로그인: 인증 후 관리자 여부 검증. 아니면 로그아웃 + 에러.
         await auth.signIn(email: _email.text, password: _password.text);
-        final isAdmin = await auth.checkIsAdmin();
+        bool isAdmin;
+        try {
+          isAdmin = await auth.checkIsAdmin();
+        } catch (_) {
+          // 검증 자체가 실패하면 로그인 상태로 두면 안 된다
+          // (그대로 두면 관리자가 일반 회원 화면으로 들어간다).
+          await auth.signOut();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(tr(context, 'admin_check_failed'))));
+            setState(() => _busy = false);
+          }
+          return;
+        }
         if (!isAdmin) {
           await auth.signOut();
           if (mounted) {
@@ -77,7 +90,12 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         await auth.signIn(email: _email.text, password: _password.text);
         // 관리자 계정은 일반 로그인으로 들어올 수 없다(관리자 로그인 사용).
-        if (await auth.checkIsAdmin()) {
+        // 확인 실패는 일반 회원으로 진행 — 홈 화면이 재시도하며 다시 판별한다.
+        var adminAccount = false;
+        try {
+          adminAccount = await auth.checkIsAdmin();
+        } catch (_) {}
+        if (adminAccount) {
           await auth.signOut();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(

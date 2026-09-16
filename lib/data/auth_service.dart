@@ -27,20 +27,41 @@ class AuthService {
   final FirebaseAuth _auth;
   final FirebaseFirestore _db;
 
-  /// 이번 세션이 "관리자 로그인"으로 진입했는지. 관리자 관리 UI 노출 기준.
-  bool loggedInAsAdmin = false;
+  /// 이번 세션이 "관리자 로그인"으로 진입했는지. 관리자 UI 노출 기준.
+  ///
+  /// ValueNotifier 인 이유: 로그인 화면이 `signIn()` 을 호출하는 순간
+  /// authStateChanges 가 먼저 터져 AuthGate → HomeScreen 이 이미 만들어진다.
+  /// 그 뒤에 관리자 검증이 끝나므로, 플래그가 켜지면 화면이 다시 그려져야 한다.
+  final ValueNotifier<bool> adminSession = ValueNotifier<bool>(false);
+
+  bool get loggedInAsAdmin => adminSession.value;
+  set loggedInAsAdmin(bool v) => adminSession.value = v;
 
   /// 로그인/로그아웃 상태 스트림. AuthGate에서 구독.
-  Stream<User?> get authState => _auth.authStateChanges();
+  /// 매번 새 스트림을 만들면 AuthGate 리빌드마다 재구독 → 로딩 스피너가
+  /// 깜빡이므로 한 번만 만들어 재사용한다.
+  late final Stream<User?> authState = _auth.authStateChanges();
 
   User? get currentUser => _auth.currentUser;
 
   /// 현재 로그인 사용자가 관리자(admins/{uid} 존재)인지.
-  Future<bool> checkIsAdmin() async {
+  ///
+  /// 로그인 직후에는 인증 토큰이 Firestore 에 아직 반영되지 않아
+  /// permission-denied / unavailable 이 한 번 날 수 있다. 그때 바로 false 로
+  /// 단정하면 관리자가 일반 회원 화면으로 들어가 버리므로 짧게 재시도한다.
+  Future<bool> checkIsAdmin({int retries = 2}) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return false;
-    final doc = await _db.collection('admins').doc(uid).get();
-    return doc.exists;
+    for (var attempt = 0;; attempt++) {
+      try {
+        final doc = await _db.collection('admins').doc(uid).get();
+        return doc.exists;
+      } catch (e) {
+        if (attempt >= retries) rethrow;
+        await Future<void>.delayed(
+            Duration(milliseconds: 300 * (attempt + 1)));
+      }
+    }
   }
 
   /// 회원가입 후 이름을 displayName에 저장.
