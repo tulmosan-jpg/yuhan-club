@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -36,6 +38,24 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // App Check: 정품 앱에서 온 요청만 통과시키기 위한 토큰을 발급/전송한다.
+  // 서버(Functions·Firestore) 강제는 신 빌드가 스토어에 보급된 뒤 켠다
+  // — 지금 켜면 토큰을 안 보내는 기존 버전이 전부 막힌다.
+  //
+  // 디버그/시뮬레이터: Play Integrity·DeviceCheck 가 동작하지 않으므로
+  // debug provider 사용(콘솔에 디버그 토큰 등록 필요).
+  try {
+    await FirebaseAppCheck.instance.activate(
+      providerAndroid: kDebugMode
+          ? AndroidDebugProvider()
+          : AndroidPlayIntegrityProvider(),
+      providerApple:
+          kDebugMode ? AppleDebugProvider() : AppleDeviceCheckProvider(),
+    );
+  } catch (_) {
+    // 활성화 실패(네트워크 등)해도 앱은 계속 뜨게 둔다.
+  }
 
   // 자동 로그인 게이트: 콜드 스타트 시 자동 로그인을 켜지 않았다면
   // 이전 세션에 남아있는 로그인을 해제해 로그인 화면부터 시작한다.
