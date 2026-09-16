@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import 'app/app_config.dart';
 import 'app/auth_gate.dart';
+import 'app/intro_screen.dart';
 import 'app/theme.dart';
 import 'data/auth_service.dart';
 import 'data/login_prefs.dart';
@@ -80,9 +81,34 @@ class YuhanFnApp extends StatelessWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          home: const AuthGate(),
+          home: const _Entry(),
         ),
       ),
+    );
+  }
+}
+
+/// 인트로 모션 → 본 화면(AuthGate).
+///
+/// AuthGate 를 인트로 뒤에 붙이는 이유: AuthGate 진입 시 업데이트 안내
+/// 다이얼로그가 뜨는데, 인트로와 겹치면 안 되기 때문이다.
+class _Entry extends StatefulWidget {
+  const _Entry();
+
+  @override
+  State<_Entry> createState() => _EntryState();
+}
+
+class _EntryState extends State<_Entry> {
+  bool _introDone = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_introDone) return const AuthGate();
+    return IntroScreen(
+      onDone: () {
+        if (mounted) setState(() => _introDone = true);
+      },
     );
   }
 }
