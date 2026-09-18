@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -52,6 +53,7 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
   // 기존 보고서의 날짜가 일정에서 빠진 경우는 그대로 인정한다(과거 데이터 보호).
   List<DateTime> _activityDays = [];
   bool _scheduleLoaded = false;
+  bool _scheduleLoadFailed = false; // 조회 실패(빈 목록과 구분해야 함)
 
   static const int _maxPhotos = 4;
   static const List<int> _hourOptions = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -89,6 +91,7 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
       setState(() {
         _activityDays = days;
         _scheduleLoaded = true;
+        _scheduleLoadFailed = false;
         // 새 보고서면 가장 가까운 활동일로 기본 날짜를 맞춘다
         // (오늘 이전 중 최근 활동일 우선, 없으면 첫 예정일).
         if (!_isEdit && days.isNotEmpty && !_isAllowedDay(_date)) {
@@ -98,8 +101,14 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
         }
       });
     } catch (_) {
-      // 일정 조회 실패 시 제한을 적용하지 못하므로 저장 시점에 다시 검사한다.
-      if (mounted) setState(() => _scheduleLoaded = true);
+      // 조회 실패는 '활동일 없음'과 다르다 — 실패 플래그를 세워
+      // 저장 시점에 한 번 더 재시도하고, 그래도 실패면 차단하지 않는다.
+      if (mounted) {
+        setState(() {
+          _scheduleLoaded = true;
+          _scheduleLoadFailed = true;
+        });
+      }
     }
   }
 
@@ -235,7 +244,13 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
       return;
     }
     // 활동일 검증: 멘토가 등록한 활동일(또는 기존 보고서의 원래 날짜)만 허용.
-    if (_scheduleLoaded && !_isAllowedDay(_date)) {
+    // 처음 조회가 실패했다면 여기서 한 번 재시도한다. 재시도도 실패하면
+    // 차단하지 않는다 — 네트워크 문제로 작성한 내용을 잃게 하지 않는 게 우선.
+    if (_scheduleLoadFailed) {
+      await _loadSchedule();
+      if (!mounted) return;
+    }
+    if (_scheduleLoaded && !_scheduleLoadFailed && !_isAllowedDay(_date)) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(tr(context,
               _activityDays.isEmpty
@@ -277,8 +292,11 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr(context, 'save_failed', {'e': '$e'}))));
+      final msg = '$e'.contains('permission-denied')
+          ? tr(context, 'save_failed_perm')
+          : tr(context, 'save_failed', {'e': '$e'});
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(msg)));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -324,6 +342,7 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
             _FilledInput(
               controller: _name,
               hint: tr(context, 'report_name_hint'),
+              maxLength: 40,
               validator: _requiredValidator(tr(context, 'report_name_label')),
             ),
             const SizedBox(height: 22),
@@ -373,6 +392,7 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
             _FilledInput(
               controller: _title,
               hint: tr(context, 'report_title_hint'),
+              maxLength: 200,
               validator: _requiredValidator(tr(context, 'report_title_field')),
             ),
             const SizedBox(height: 22),
@@ -385,6 +405,7 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
               hint: tr(context, 'report_content_hint'),
               minLines: 5,
               maxLines: 8,
+              maxLength: 5000,
               validator: _requiredValidator(tr(context, 'report_content')),
             ),
             const SizedBox(height: 22),
@@ -397,6 +418,7 @@ class _ReportEditorScreenState extends State<ReportEditorScreen> {
               hint: tr(context, 'report_feedback_hint'),
               minLines: 3,
               maxLines: 6,
+              maxLength: 2000,
               validator:
                   _requiredValidator(tr(context, 'report_feedback_field')),
             ),
@@ -551,12 +573,17 @@ class _FilledInput extends StatelessWidget {
     this.validator,
     this.minLines = 1,
     this.maxLines = 1,
+    this.maxLength,
   });
   final TextEditingController controller;
   final String hint;
   final String? Function(String?)? validator;
   final int minLines;
   final int maxLines;
+
+  /// 서버 규칙(isValidReport)과 동일한 길이 상한. 넘겨 쓰면 저장이
+  /// permission-denied 로 실패하므로 입력 단계에서 자른다.
+  final int? maxLength;
 
   @override
   Widget build(BuildContext context) {
@@ -565,6 +592,9 @@ class _FilledInput extends StatelessWidget {
       validator: validator,
       minLines: minLines,
       maxLines: maxLines,
+      inputFormatters: maxLength == null
+          ? null
+          : [LengthLimitingTextInputFormatter(maxLength)],
       style: const TextStyle(fontSize: 15, color: Color(0xFF1F2430), height: 1.4),
       decoration: InputDecoration(
         hintText: hint,

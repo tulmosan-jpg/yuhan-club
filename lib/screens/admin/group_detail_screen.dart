@@ -427,15 +427,12 @@ class _GroupStatsState extends State<_GroupStats> {
     final buf = StringBuffer();
     buf.writeln('이름,출석,출석률(%),보고서수');
     final sessions = d.dates.length;
-    // 회원별 보고서 수
-    final reportsByUser = <String, int>{};
-    for (final r in d.reports) {
-      reportsByUser[r.authorName] = (reportsByUser[r.authorName] ?? 0) + 1;
-    }
+    // 회원별 보고서 수 (uid 기준)
+    final reportsByUser = _countReportsByMember(d.members, d.reports);
     for (final m in d.members) {
       final rate =
           sessions == 0 ? 0 : (m.summary.totalDays / sessions * 100).round();
-      final rc = reportsByUser[m.name] ?? 0;
+      final rc = reportsByUser[m.userId] ?? 0;
       buf.writeln('${m.name},${m.summary.totalDays},$rate,$rc');
     }
     return buf.toString();
@@ -474,10 +471,7 @@ class _GroupStatsState extends State<_GroupStats> {
         final rsvpRate = (members * sessions) == 0
             ? 0
             : (d.rsvp.length / (members * sessions) * 100).round();
-        final reportsByUser = <String, int>{};
-        for (final r in d.reports) {
-          reportsByUser[r.authorName] = (reportsByUser[r.authorName] ?? 0) + 1;
-        }
+        final reportsByUser = _countReportsByMember(d.members, d.reports);
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
@@ -518,7 +512,7 @@ class _GroupStatsState extends State<_GroupStats> {
               final rate = sessions == 0
                   ? 0.0
                   : (m.summary.totalDays / sessions).clamp(0.0, 1.0);
-              final rc = reportsByUser[m.name] ?? 0;
+              final rc = reportsByUser[m.userId] ?? 0;
               return Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
@@ -600,6 +594,26 @@ class _GroupStatsState extends State<_GroupStats> {
       ),
     );
   }
+}
+
+
+/// 회원별 보고서 수. uid(authorId) 우선, 레거시 문서(authorId 없음)는 이름 폴백.
+/// 이름 매칭만 쓰면 동명이인은 합산되고 개명하면 0건이 된다.
+Map<String, int> _countReportsByMember(
+    List<MemberAttendance> members, List<MentoringReport> reports) {
+  final byUid = <String, int>{};
+  final byName = <String, int>{};
+  for (final r in reports) {
+    if (r.authorId.isNotEmpty) {
+      byUid[r.authorId] = (byUid[r.authorId] ?? 0) + 1;
+    } else {
+      byName[r.authorName] = (byName[r.authorName] ?? 0) + 1;
+    }
+  }
+  return {
+    for (final m in members)
+      m.userId: (byUid[m.userId] ?? 0) + (byName[m.name] ?? 0),
+  };
 }
 
 class _StatsData {

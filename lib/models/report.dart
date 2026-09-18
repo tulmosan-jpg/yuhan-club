@@ -33,6 +33,7 @@ enum ReportStatus {
 class MentoringReport {
   final String id;
   final ReportRole role; // 작성자 역할
+  final String authorId; // 작성자 uid (통계 매칭용 — 이름은 동명이인/개명 위험)
   final String authorName; // 작성자
   final String partnerName; // 상대(멘토↔멘티)
   final DateTime activityDate; // 활동 일자
@@ -48,6 +49,7 @@ class MentoringReport {
   const MentoringReport({
     required this.id,
     required this.role,
+    this.authorId = '',
     required this.authorName,
     required this.partnerName,
     required this.activityDate,
@@ -86,6 +88,7 @@ class MentoringReport {
     return MentoringReport(
       id: id,
       role: ReportRole.fromName(map['role'] as String?),
+      authorId: map['authorId'] as String? ?? '',
       authorName: map['authorName'] as String? ?? '',
       partnerName: map['partnerName'] as String? ?? '',
       activityDate:

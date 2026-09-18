@@ -406,6 +406,20 @@ const resetAccountData = async (uid) => {
   logger.info("account reset", {uid});
 };
 
+// ── 그룹 삭제(하위 트리 포함) ────────────────────────────────────
+// 클라이언트가 그룹 문서만 지우면 members/attendance_dates/attendance 가
+// 잔존해, 삭제된 그룹의 멤버가 그 그룹 보고서 열람 권한(isGroupMember)을
+// 영구 보유하는 문제가 있었다 → 서버에서 recursiveDelete 로 전체 삭제.
+exports.deleteGroup = onCall(async (request) => {
+  await assertAdmin(request);
+  const gid = request.data && request.data.gid;
+  if (!gid) throw new HttpsError("invalid-argument", "그룹이 필요합니다.");
+  await db.recursiveDelete(db.collection("groups").doc(gid));
+  await db.collection("group_index").doc(gid).delete();
+  logger.info("group deleted", {gid});
+  return {ok: true};
+});
+
 exports.resetMemberAccount = onCall(async (request) => {
   await assertAdmin(request);
   const uid = request.data && request.data.uid;

@@ -353,7 +353,11 @@ class _MentorPickerState extends State<_MentorPicker> {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        final mentors = snap.data!;
+        // 현재 가입된 멘토는 제외 — 재선택하면 members 문서가 이미 있어
+        // create 규칙(update 불가)에 걸려 올바른 PIN 도 항상 실패한다.
+        final mentors = snap.data!
+            .where((g) => !widget.leaveOnJoin.contains(g.id))
+            .toList();
         return Stack(
           children: [
             ListView(

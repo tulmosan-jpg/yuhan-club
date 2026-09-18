@@ -55,6 +55,13 @@ class _NotificationSettingsScreenState
     if (key == 'notif_enabled' && value) {
       await NotificationService.instance.requestPermission();
     }
+    // 마스터/리마인더 토글을 끄면 이미 예약된 로컬 리마인더를 즉시 취소.
+    // (예약은 대시보드 진입 시 syncReminders 가 토글에 맞춰 다시 잡는다 —
+    // 토글만 저장하면 기존 예약이 남아 꺼도 계속 울리는 문제가 있었다)
+    const reminderKeys = {'notif_enabled', 'n_attend_reminder', 'n_rsvp_reminder'};
+    if (!value && reminderKeys.contains(key)) {
+      await NotificationService.instance.cancelAll();
+    }
     // 서버 알림 필터용으로 설정을 Firestore 에 동기화.
     if (!AppConfig.useMock) {
       await MessagingService.instance.syncPrefs();

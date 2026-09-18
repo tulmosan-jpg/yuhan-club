@@ -128,6 +128,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           respondedDays: rsvp.keys.toSet(),
         ));
       }
+    } else if (!AppConfig.useMock) {
+      // 그룹이 없어도(탈퇴/그룹 삭제) 빈 목록으로 동기화해
+      // 이전에 예약된 리마인더를 정리한다. syncReminders 는 시작 시
+      // cancelAll 을 수행하므로 이 호출이 곧 정리다.
+      unawaited(NotificationService.instance.syncReminders(
+        attendanceDates: const [],
+        respondedDays: const {},
+      ));
     }
     return _DashboardData(
       attendance: await attendanceF,

@@ -80,6 +80,12 @@ const Map<String, List<String>> _dict = {
       'Rewards are for department members only. Enter the join code from your department.'],
   'join_code_verified': ['인증됐어요! 이제 리워드를 이용할 수 있어요.', 'Verified! You can now use rewards.'],
   'join_code_too_many': ['시도가 너무 많았어요. 30분 후 다시 시도해주세요.', 'Too many attempts. Try again in 30 minutes.'],
+  'redeem_error': ['사용 처리에 실패했어요. 네트워크를 확인하고 다시 시도해주세요.',
+      'Failed to redeem. Check your network and try again.'],
+  'reward_load_failed': ['리워드 정보를 불러오지 못했어요. 아래로 당겨 새로고침해주세요.',
+      'Failed to load rewards. Pull down to refresh.'],
+  'save_failed_perm': ['저장할 수 없어요. 입력 내용이 규정(길이 제한 등)을 벗어났거나 권한이 없어요.',
+      'Could not save. The content violates limits or you lack permission.'],
   'reward_needs_join_code': ['가입코드 인증이 필요해요. 관리자에게 문의해주세요.',
       'Join-code verification required. Please contact an administrator.'],
   // 비밀번호 변경/임시 비밀번호

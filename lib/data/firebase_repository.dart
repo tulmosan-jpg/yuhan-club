@@ -219,8 +219,9 @@ class FirebaseRepository implements AppRepository {
 
   @override
   Future<void> deleteGroup(String groupId) async {
-    await _db.collection('groups').doc(groupId).delete();
-    await _db.collection('group_index').doc(groupId).delete();
+    // 서버에서 하위 트리(멤버십·출석일·체크인·RSVP)까지 함께 삭제.
+    // 문서만 지우면 잔존 멤버십이 보고서 열람 권한으로 계속 작동한다.
+    await _functions.httpsCallable('deleteGroup').call({'gid': groupId});
   }
 
   @override

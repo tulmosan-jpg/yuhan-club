@@ -65,11 +65,19 @@ class _AdminRewardScreenState extends State<AdminRewardScreen> {
       return;
     }
     setState(() => _busy = true);
-    await context.read<AppRepository>().setRewardCode(code);
-    if (!mounted) return;
-    setState(() => _busy = false);
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(tr(context, 'code_saved'))));
+    try {
+      await context.read<AppRepository>().setRewardCode(code);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(tr(context, 'code_saved'))));
+    } catch (e) {
+      // 실패를 삼키면 _busy 가 영구 true 로 남아 버튼이 잠긴다.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('${tr(context, 'stock_save_failed')}: $e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _editStock(Drink d, int current) async {

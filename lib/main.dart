@@ -11,9 +11,11 @@ import 'package:provider/provider.dart';
 import 'app/app_config.dart';
 import 'app/auth_gate.dart';
 import 'app/intro_screen.dart';
+import 'app/root_messenger.dart';
 import 'app/theme.dart';
 import 'data/auth_service.dart';
 import 'data/login_prefs.dart';
+import 'data/messaging_service.dart';
 import 'data/notification_service.dart';
 import 'data/repository.dart';
 import 'firebase_options.dart';
@@ -57,18 +59,28 @@ Future<void> main() async {
     // 활성화 실패(네트워크 등)해도 앱은 계속 뜨게 둔다.
   }
 
+  // 로컬 알림 플러그인 초기화(권한 요청은 로그인 후 대시보드에서).
+  // 아래 게이트가 cancelAll 을 쓸 수 있도록 게이트보다 먼저 초기화한다.
+  await NotificationService.instance.init();
+
   // 자동 로그인 게이트: 콜드 스타트 시 자동 로그인을 켜지 않았다면
   // 이전 세션에 남아있는 로그인을 해제해 로그인 화면부터 시작한다.
-  // (앱 실행 중 새로 로그인한 세션에는 영향 없음 — 여기는 시작 1회만 실행)
+  // AuthService.signOut() 과 동일한 정리를 수행해야 한다 — 그냥
+  // FirebaseAuth.signOut() 만 하면 FCM 토큰·예약 알림이 남아
+  // 로그아웃된 기기가 이전 계정의 푸시를 계속 받는다.
   if (!AppConfig.useMock && FirebaseAuth.instance.currentUser != null) {
     final autoLogin = await LoginPrefs.autoLoginEnabled();
     if (!autoLogin) {
+      try {
+        await MessagingService.instance.removeToken(); // 로그인 상태에서만 가능
+      } catch (_) {}
+      try {
+        await NotificationService.instance.cancelAll();
+      } catch (_) {}
+      await LoginPrefs.setAdminSession(false);
       await FirebaseAuth.instance.signOut();
     }
   }
-
-  // 로컬 알림 플러그인 초기화(권한 요청은 로그인 후 대시보드에서).
-  await NotificationService.instance.init();
 
   final localeProvider = LocaleProvider();
   await localeProvider.load();
@@ -91,6 +103,7 @@ class YuhanFnApp extends StatelessWidget {
       ],
       child: Consumer<LocaleProvider>(
         builder: (context, lp, _) => MaterialApp(
+          scaffoldMessengerKey: rootMessengerKey,
           title: AppConfig.appTitle,
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light,

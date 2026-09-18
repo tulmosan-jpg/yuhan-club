@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../app/root_messenger.dart';
 import '../../app/theme.dart';
 import '../../data/auth_service.dart';
 import '../../data/login_prefs.dart';
@@ -66,20 +67,16 @@ class _LoginScreenState extends State<LoginScreen> {
           // 검증 자체가 실패하면 로그인 상태로 두면 안 된다
           // (그대로 두면 관리자가 일반 회원 화면으로 들어간다).
           await auth.signOut();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(tr(context, 'admin_check_failed'))));
-            setState(() => _busy = false);
-          }
+          // signIn 직후 authStateChanges 로 이 State 가 dispose 되므로
+          // mounted 가드 뒤에 두면 메시지가 영영 안 보인다 → 전역 스낵바.
+          showGlobalSnack('admin_check_failed');
+          if (mounted) setState(() => _busy = false);
           return;
         }
         if (!isAdmin) {
           await auth.signOut();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(tr(context, 'not_admin'))));
-            setState(() => _busy = false);
-          }
+          showGlobalSnack('not_admin'); // State dispose 이후에도 표시
+          if (mounted) setState(() => _busy = false);
           return;
         }
         auth.loggedInAsAdmin = true;
@@ -107,18 +104,16 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _email.text,
         autoLogin: _autoLogin,
       );
-      // 회원가입 완료 안내. (스낵바는 앱 수준 메신저라 홈 전환 후에도 보인다)
-      if (_isSignUp && !_adminMode && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(tr(context, 'signup_done'))));
+      // 회원가입 완료 안내 — createUser 직후 화면이 홈으로 교체돼
+      // 이 State 는 이미 dispose 됐을 수 있으므로 전역 스낵바로 띄운다.
+      if (_isSignUp && !_adminMode) {
+        showGlobalSnack('signup_done');
       }
       // 성공 시 AuthGate가 자동으로 홈으로 전환.
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr(context, AuthService.errorKey(e)))),
-        );
-      }
+      // 가입코드 오류 등은 계정 롤백(홈 플래시→복귀) 뒤에 도착하므로
+      // 이 State 는 dispose 상태일 수 있다 → 전역 스낵바로 반드시 표시.
+      showGlobalSnack(AuthService.errorKey(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

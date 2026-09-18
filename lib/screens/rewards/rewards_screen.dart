@@ -63,7 +63,12 @@ class _RewardsScreenState extends State<RewardsScreen> {
         _loading = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      // 로드 실패를 삼키면 _config 가 null 이라 '리워드 받기'가 눌러도
+      // 무반응인 죽은 버튼이 된다 → 안내하고 새로고침을 유도.
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'reward_load_failed'))));
     }
   }
 
@@ -153,37 +158,74 @@ class _RewardsScreenState extends State<RewardsScreen> {
   }
 
   Future<void> _redeem(Coupon c) async {
-    // 1) 직원 비밀번호(4자리) 확인.
-    final code = await showPinDialog(
-      context: context,
-      title: tr(context, 'redeem_title'),
-      message: tr(context, 'redeem_desc'),
-      confirmText: tr(context, 'redeem_confirm'),
-      confirmColor: _purple,
-    );
+    // 1) 직원 비밀번호(4자리) 확인. 4자리가 아니면 증빙 단계로 넘어가지
+    //    않는다(빈/짧은 코드로 서명·사진까지 받고 실패하는 헛걸음 방지).
+    var code = await _promptStaffCode();
     if (code == null || !mounted) return;
-    // 2) 수령자 전자서명 + 주문서/영수증 사진(둘 다 필수).
+    // 2) 수령자 전자서명 + 주문서/영수증 사진(둘 다 필수). 한 번만 받는다.
     final proof = await Navigator.of(context).push<RedeemProof>(
       MaterialPageRoute(builder: (_) => RedeemConfirmScreen(coupon: c)),
     );
     if (proof == null || !mounted) return;
-    setState(() => _busy = true);
     final repo = context.read<AppRepository>();
-    try {
-      final success = await repo.redeemCoupon(
-        c.id,
-        code.trim(),
-        signatureB64: proof.signatureB64,
-        receiptB64: proof.receiptB64,
-      );
+    // 3) 코드가 틀리면 증빙은 유지한 채 코드만 다시 받는다
+    //    (서명·사진을 처음부터 다시 시키지 않는다).
+    while (mounted) {
+      setState(() => _busy = true);
+      bool success;
+      try {
+        success = await repo.redeemCoupon(
+          c.id,
+          code!.trim(),
+          signatureB64: proof.signatureB64,
+          receiptB64: proof.receiptB64,
+        );
+      } catch (e) {
+        // 레이트리밋 잠금·네트워크 오류 등 — 무반응으로 끝나면 증빙까지
+        // 유실되므로 반드시 안내한다.
+        if (!mounted) return;
+        setState(() => _busy = false);
+        final s = e.toString();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(tr(
+                context,
+                s.contains('too_many_attempts')
+                    ? 'join_code_too_many'
+                    : 'redeem_error'))));
+        return;
+      }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(tr(
-              context, success ? 'redeem_success' : 'redeem_bad_code'))));
-      if (success) await _load();
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      setState(() => _busy = false);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(tr(context, 'redeem_success'))));
+        await _load();
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'redeem_bad_code'))));
+      code = await _promptStaffCode();
+      if (code == null || !mounted) return;
     }
+  }
+
+  /// 직원 4자리 코드 입력(4자리가 될 때까지 반복, 취소 시 null).
+  Future<String?> _promptStaffCode() async {
+    while (mounted) {
+      final code = await showPinDialog(
+        context: context,
+        title: tr(context, 'redeem_title'),
+        message: tr(context, 'redeem_desc'),
+        confirmText: tr(context, 'redeem_confirm'),
+        confirmColor: _purple,
+      );
+      if (code == null) return null;
+      if (code.trim().length == 4) return code.trim();
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'code_must_be_4'))));
+    }
+    return null;
   }
 
   @override
