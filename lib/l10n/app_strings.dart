@@ -105,6 +105,7 @@ const Map<String, List<String>> _dict = {
   'update_later': ['나중에', 'Later'],
   'login': ['로그인', 'Log in'],
   'signup': ['회원가입', 'Sign up'],
+  'signup_done': ['가입되었습니다! 환영해요 🎉', 'Signed up! Welcome 🎉'],
   'name': ['이름', 'Name'],
   'email': ['이메일', 'Email'],
   'password': ['비밀번호', 'Password'],

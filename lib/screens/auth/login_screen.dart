@@ -107,6 +107,11 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _email.text,
         autoLogin: _autoLogin,
       );
+      // 회원가입 완료 안내. (스낵바는 앱 수준 메신저라 홈 전환 후에도 보인다)
+      if (_isSignUp && !_adminMode && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(tr(context, 'signup_done'))));
+      }
       // 성공 시 AuthGate가 자동으로 홈으로 전환.
     } catch (e) {
       if (mounted) {
