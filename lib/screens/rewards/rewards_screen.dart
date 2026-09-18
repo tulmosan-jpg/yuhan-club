@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../data/auth_service.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/group.dart';
@@ -84,6 +85,39 @@ class _RewardsScreenState extends State<RewardsScreen> {
     await _claim(drinkId);
   }
 
+  /// 가입코드 인증 다이얼로그. 성공 시 true.
+  Future<bool> _promptJoinCode() async {
+    final code = await showInputDialog(
+      context: context,
+      title: tr(context, 'join_code_verify_title'),
+      message: tr(context, 'join_code_verify_body'),
+      hint: tr(context, 'join_code'),
+      confirmText: tr(context, 'confirm'),
+    );
+    if (code == null || code.isEmpty || !mounted) return false;
+    try {
+      await context.read<AuthService>().submitJoinCode(code);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(tr(context, 'join_code_verified'))));
+      }
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      final s = e.toString();
+      final key = s.contains('bad_join_code')
+          ? 'join_code_wrong'
+          : s.contains('join_code_not_set')
+              ? 'join_code_not_set'
+              : s.contains('too_many_attempts')
+                  ? 'join_code_too_many'
+                  : 'coupon_failed';
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(tr(context, key))));
+      return false;
+    }
+  }
+
   Future<void> _claim(String drinkId) async {
     setState(() => _busy = true);
     final repo = context.read<AppRepository>();
@@ -96,15 +130,20 @@ class _RewardsScreenState extends State<RewardsScreen> {
     } catch (e) {
       if (!mounted) return;
       final s = e.toString();
+      if (s.contains('join_code_required')) {
+        // 구버전에서 가입해 인증 마크가 없는 회원 → 여기서 가입코드로 인증.
+        setState(() => _busy = false);
+        final verified = await _promptJoinCode();
+        if (verified && mounted) await _claim(drinkId); // 인증 후 재시도
+        return;
+      }
       final msg = s.contains('unused_coupon')
           ? tr(context, 'reward_has_unused')
           : s.contains('daily_limit')
               ? tr(context, 'reward_claimed_today')
-              : s.contains('join_code_required')
-                  ? tr(context, 'reward_needs_join_code')
-                  : s.contains('resource-exhausted') || s.contains('sold_out')
-                      ? tr(context, 'coupon_sold_out')
-                      : tr(context, 'coupon_failed');
+              : s.contains('resource-exhausted') || s.contains('sold_out')
+                  ? tr(context, 'coupon_sold_out')
+                  : tr(context, 'coupon_failed');
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(msg)));
       await _load();

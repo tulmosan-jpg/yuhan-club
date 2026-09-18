@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import '../firebase_options.dart';
+import 'login_prefs.dart';
 import 'messaging_service.dart';
 import 'notification_service.dart';
 
@@ -120,6 +121,7 @@ class AuthService {
 
   Future<void> signOut() async {
     loggedInAsAdmin = false;
+    await LoginPrefs.setAdminSession(false);
     // 이 기기 FCM 토큰 제거(로그아웃한 계정에 푸시가 가지 않도록).
     await MessagingService.instance.removeToken();
     await NotificationService.instance.cancelAll();
@@ -239,6 +241,13 @@ class AuthService {
       .collection('secrets')
       .doc('join_code')
       .set({'code': code.trim()}, SetOptions(merge: true));
+
+  /// 기존 계정의 가입코드 인증(구버전에서 가입해 인증 마크가 없는 회원용).
+  Future<void> submitJoinCode(String code) async {
+    await FirebaseFunctions.instance
+        .httpsCallable('verifyJoinCode')
+        .call({'code': code.trim()});
+  }
 
   /// 현재(임시) 비밀번호로 재인증 후 새 비밀번호로 변경.
   /// 성공하면 '임시 비밀번호 변경 필요' 마크도 해제한다.

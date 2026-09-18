@@ -123,6 +123,18 @@ class _EntryState extends State<_Entry> {
   bool _introDone = false;
 
   @override
+  void initState() {
+    super.initState();
+    // 재시작(자동 로그인) 시 지난 세션의 유형(관리자/회원)을 복원한다.
+    // 인트로가 도는 동안 로드되므로 화면 깜빡임이 없다.
+    LoginPrefs.adminSessionEnabled().then((v) {
+      if (mounted && FirebaseAuth.instance.currentUser != null) {
+        context.read<AuthService>().loggedInAsAdmin = v;
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (_introDone) return const AuthGate();
     return IntroScreen(

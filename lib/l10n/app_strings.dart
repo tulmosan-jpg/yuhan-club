@@ -75,6 +75,11 @@ const Map<String, List<String>> _dict = {
   'join_code_hint': ['회원가입 시 이 코드를 입력해야 가입할 수 있어요. 학과 구성원에게만 공유하세요.',
       'New members must enter this code to sign up. Share it only within the department.'],
   'join_code_saved': ['가입코드를 저장했어요.', 'Join code saved.'],
+  'join_code_verify_title': ['가입코드 인증', 'Verify join code'],
+  'join_code_verify_body': ['리워드는 학과 구성원만 이용할 수 있어요. 학과에서 받은 가입코드를 입력해주세요.',
+      'Rewards are for department members only. Enter the join code from your department.'],
+  'join_code_verified': ['인증됐어요! 이제 리워드를 이용할 수 있어요.', 'Verified! You can now use rewards.'],
+  'join_code_too_many': ['시도가 너무 많았어요. 30분 후 다시 시도해주세요.', 'Too many attempts. Try again in 30 minutes.'],
   'reward_needs_join_code': ['가입코드 인증이 필요해요. 관리자에게 문의해주세요.',
       'Join-code verification required. Please contact an administrator.'],
   // 비밀번호 변경/임시 비밀번호

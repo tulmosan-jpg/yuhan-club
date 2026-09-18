@@ -69,12 +69,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthService>();
-    // 관리자 로그인 플래그는 signIn() 직후(= 이 화면이 이미 만들어진 뒤)에 켜지므로
-    // 리스닝해서 켜지는 즉시 관리자 화면으로 전환한다.
+    // 화면 분기는 '어느 탭으로 로그인했나'(세션 유형)로 결정한다.
+    // 관리자 계정도 일반 로그인이면 회원 화면을 쓴다(멘토=멘티 겸용 지원).
     return ValueListenableBuilder<bool>(
       valueListenable: auth.adminSession,
       builder: (context, adminSession, _) {
-        if (adminSession) return const AdminHome();
+        if (!adminSession) return _buildMemberShell(context);
+        // 관리자 세션: 실제 권한을 서버로 확인(플래그 위조/권한 해제 대비).
         return FutureBuilder<bool>(
           future: _adminCheck,
           builder: (context, snap) {
@@ -83,7 +84,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 body: Center(child: CircularProgressIndicator()),
               );
             }
-            // 확인 자체가 실패하면 회원 화면으로 떨어뜨리지 않고 재시도를 준다.
             if (snap.hasError) {
               return Scaffold(
                 body: Center(
@@ -102,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               );
             }
-            // 관리자 → 보고서/출석만. 일반 회원 → 전체 앱.
+            // 권한이 해제된 계정이면 회원 화면으로.
             return snap.data == true
                 ? const AdminHome()
                 : _buildMemberShell(context);

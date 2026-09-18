@@ -92,24 +92,15 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         auth.loggedInAsAdmin = false;
       } else {
+        // 일반 로그인: 관리자 계정도 허용한다(회원 모드로 진입).
+        // 멘토가 회원(멘티) 기능을 같은 계정으로 써야 하는 경우가 있어서다.
+        // 관리자 화면은 '관리자 로그인' 탭으로만 들어간다.
         await auth.signIn(email: _email.text, password: _password.text);
-        // 관리자 계정은 일반 로그인으로 들어올 수 없다(관리자 로그인 사용).
-        // 확인 실패는 일반 회원으로 진행 — 홈 화면이 재시도하며 다시 판별한다.
-        var adminAccount = false;
-        try {
-          adminAccount = await auth.checkIsAdmin();
-        } catch (_) {}
-        if (adminAccount) {
-          await auth.signOut();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(tr(context, 'use_admin_login'))));
-            setState(() => _busy = false);
-          }
-          return;
-        }
         auth.loggedInAsAdmin = false;
       }
+      // 화면 분기(관리자/회원)는 이번 세션의 로그인 방식으로 결정되며,
+      // 재시작(자동 로그인) 시에도 복원되도록 저장한다.
+      await LoginPrefs.setAdminSession(auth.loggedInAsAdmin);
       // 아이디 저장 / 자동 로그인 설정 저장.
       await LoginPrefs.save(
         rememberEmail: _rememberEmail,

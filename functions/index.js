@@ -259,21 +259,42 @@ exports.verifyJoinCode = onCall(async (request) => {
 // 가입코드 제도 도입 시점. 이전에 만들어진 계정(기존 회원)은 자동 인정.
 const JOIN_CODE_CUTOFF = Date.parse("2026-09-16T15:00:00Z");
 
-/** 리워드 발급 자격: 인증 마크 보유, 또는 제도 도입 전 가입한 기존 회원. */
+/**
+ * 리워드 발급 자격. 다음 중 하나면 인정:
+ *  1) 인증 마크 보유(가입 시 가입코드 인증)
+ *  2) 제도 도입 전 가입한 기존 회원(계정 생성 시각)
+ *  3) 멘토 그룹 가입자 — 그룹 가입은 멘토가 주는 PIN 이 필요하므로
+ *     실제 동아리원이라는 증거다. 도입 이후에 구버전 앱(가입코드 입력
+ *     화면 없음)으로 가입한 회원이 여기서 구제된다.
+ * 2·3 으로 통과하면 마크를 남겨 다음부터는 조회 1회로 끝낸다.
+ */
 async function assertVerifiedMember(uid) {
   const ref = db.collection("members_verified").doc(uid);
   const snap = await ref.get();
   if (snap.exists) return;
+
   const rec = await admin.auth().getUser(uid);
   const created = Date.parse(rec.metadata.creationTime);
   if (created < JOIN_CODE_CUTOFF) {
-    // 기존 회원: 무중단으로 자동 인정하고 마크를 남긴다.
     await ref.set({
       via: "grandfathered",
       verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, {merge: true});
     return;
   }
+
+  // 그룹(멘토 PIN) 가입자 확인 — 그룹 수가 적어 직접 조회로 충분.
+  const groups = await db.collection("groups").get();
+  const checks = await Promise.all(groups.docs.map((g) =>
+    db.collection("groups").doc(g.id).collection("members").doc(uid).get()));
+  if (checks.some((m) => m.exists)) {
+    await ref.set({
+      via: "group_member",
+      verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, {merge: true});
+    return;
+  }
+
   throw new HttpsError("permission-denied", "join_code_required",
       {reason: "join_code_required"});
 }
